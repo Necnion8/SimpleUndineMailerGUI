@@ -1,5 +1,6 @@
 package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.ui;
 
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.Panel;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.PanelItem;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -8,8 +9,8 @@ import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 public class OutboxUI extends MailUI {
-    public OutboxUI(Player player) {
-        super(player);
+    public OutboxUI(Player player, Panel parent) {
+        super(player, parent);
     }
 
     @Override

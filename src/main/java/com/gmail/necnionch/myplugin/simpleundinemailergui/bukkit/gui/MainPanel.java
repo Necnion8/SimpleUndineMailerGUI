@@ -21,22 +21,16 @@ public class MainPanel extends Panel {
     private MailUI currentUI;
 
     public MainPanel(Player player) {
-        super(player, 54, "", new ItemStack(Material.AIR));
-        this.newMail = new NewMailUI(player);
-        this.inbox = new InboxUI(player);
-        this.outbox = new OutboxUI(player);
-        this.trashBox = new TrashBoxUI(player);
-        this.groups = new GroupsUI(player);
-        this.currentUI = inbox;
+        this(player, UIType.INBOX);
     }
 
     public MainPanel(Player player, UIType type) {
         super(player, 54, "", new ItemStack(Material.AIR));
-        this.newMail = new NewMailUI(player);
-        this.inbox = new InboxUI(player);
-        this.outbox = new OutboxUI(player);
-        this.trashBox = new TrashBoxUI(player);
-        this.groups = new GroupsUI(player);
+        this.newMail = new NewMailUI(player, this);
+        this.inbox = new InboxUI(player, this);
+        this.outbox = new OutboxUI(player, this);
+        this.trashBox = new TrashBoxUI(player, this);
+        this.groups = new GroupsUI(player, this);
 
         switch (type) {
             case NEW_MAIL:
