@@ -13,12 +13,20 @@ import java.util.List;
 public class PanelItem {
 
     private ItemStack item;
-    private ClickEventListener clickListener = (e, p) -> {};
-    private ItemBuilder itemBuilder = (p) -> item;
+    private ClickEventListener clickListener;
+    private ItemBuilder itemBuilder;
 
 
     public PanelItem(ItemStack item) {
         this.item = item;
+        this.clickListener = (e, p) -> {};
+        this.itemBuilder = (p) -> item;
+    }
+
+    public PanelItem(ItemBuilder builder, ClickEventListener click) {
+        this.item = null;
+        this.clickListener = click;
+        this.itemBuilder = builder;
     }
 
     public ItemStack getItemStack() {
