@@ -1,5 +1,6 @@
 package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui;
 
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.MailGUIPlugin;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.ui.*;
 import com.google.common.collect.ImmutableMap;
 import org.bukkit.ChatColor;
@@ -54,6 +55,11 @@ public class MainPanel extends Panel {
     @Override
     public PanelItem[] build() {
         PanelItem[] slots = new PanelItem[getSize()];
+
+        if (!MailGUIPlugin.getWrapper().available()) {
+            slots[22] = PanelItem.createItem(Material.BARRIER, ChatColor.RED + "現在メールプラグインを利用できません");
+            return slots;
+        }
 
         slots[0] = createUIItem(newMail);
         slots[2] = createUIItem(inbox);
