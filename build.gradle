@@ -15,6 +15,10 @@ repositories {
         name = 'sonatype'
         url = 'https://oss.sonatype.org/content/groups/public/'
     }
+    maven {
+        name = "opencollab-snapshot"
+        url = "https://repo.opencollab.dev/maven-snapshots/"
+    }
 }
 
 dependencies {
@@ -22,6 +26,7 @@ dependencies {
     compileOnly 'org.spigotmc:spigot-api:1.13.2-R0.1-SNAPSHOT'
     implementation files("libs/UndineMailer.jar")
     implementation files("libs/LOInfoGUI-1.0.0.jar")
+    implementation "org.geysermc.floodgate:api:2.2.0-SNAPSHOT"
 }
 
 def targetJavaVersion = 8

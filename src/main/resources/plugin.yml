@@ -3,7 +3,7 @@ version: '${version}'
 main: com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.MailGUIPlugin
 api-version: 1.13
 depend: [ UndineMailer ]
-softdepend: [ LOInfoGUI ]
+softdepend: [ LOInfoGUI, floodgate ]
 authors: [ Necnion8 ]
 
 description: |-

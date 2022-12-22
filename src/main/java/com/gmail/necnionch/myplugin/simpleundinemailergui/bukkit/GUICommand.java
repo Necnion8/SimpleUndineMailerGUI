@@ -1,10 +1,13 @@
 package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit;
 
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.BedrockMailPanel;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.MainPanel;
+import org.bitbucket.ucchy.undine.sender.MailSender;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
+import org.geysermc.floodgate.api.player.FloodgatePlayer;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
@@ -28,10 +31,15 @@ public class GUICommand implements TabExecutor {
             if (args.length >= 1)
                 ui = MainPanel.UITypeNames.get(args[0].toLowerCase(Locale.ROOT));
 
+            Player player = (Player) sender;
+            if (plugin.isEnabledFloodgate() && openForBedrock(player, ui)) {
+                return true;
+            }
+
             if (ui != null) {
-                new MainPanel(((Player) sender), ui).open();
+                new MainPanel(player, ui).open();
             } else {
-                new MainPanel(((Player) sender)).open();
+                new MainPanel(player).open();
             }
         }
         return true;
@@ -46,6 +54,16 @@ public class GUICommand implements TabExecutor {
                     .collect(Collectors.toList());
         }
         return Collections.emptyList();
+    }
+
+
+    private boolean openForBedrock(Player player, MainPanel.UIType ui) {
+        FloodgatePlayer fPlayer = plugin.getFloodgatePlayer(player.getUniqueId());
+        if (fPlayer != null) {
+            BedrockMailPanel.open(fPlayer, MailSender.getMailSender(player), ui);
+            return true;
+        }
+        return false;
     }
 
 }

@@ -3,13 +3,18 @@ package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.Panel;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.hooks.MailWrapper;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.geysermc.floodgate.api.FloodgateApi;
+import org.geysermc.floodgate.api.player.FloodgatePlayer;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
 public final class MailGUIPlugin extends JavaPlugin {
 
     private MailWrapper mailWrapper;
+    private boolean enabledFloodgate;
 
     @Override
     public void onEnable() {
@@ -18,6 +23,7 @@ public final class MailGUIPlugin extends JavaPlugin {
                 cmd.setExecutor(new GUICommand(this)));
 
         mailWrapper = new MailWrapper();
+        enabledFloodgate = getServer().getPluginManager().isPluginEnabled("floodgate");
     }
 
     @Override
@@ -30,6 +36,17 @@ public final class MailGUIPlugin extends JavaPlugin {
                 getPlugin(MailGUIPlugin.class).mailWrapper,
                 "MailWrapper not initialized!"
         );
+    }
+
+    public boolean isEnabledFloodgate() {
+        return enabledFloodgate;
+    }
+
+    public @Nullable FloodgatePlayer getFloodgatePlayer(UUID playerId) {
+        if (enabledFloodgate) {
+            return FloodgateApi.getInstance().getPlayer(playerId);
+        }
+        return null;
     }
 
 }
