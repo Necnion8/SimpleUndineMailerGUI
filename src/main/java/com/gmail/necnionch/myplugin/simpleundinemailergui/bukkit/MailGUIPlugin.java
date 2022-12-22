@@ -13,11 +13,13 @@ import java.util.UUID;
 
 public final class MailGUIPlugin extends JavaPlugin {
 
+    private static boolean enabled;
     private MailWrapper mailWrapper;
     private boolean enabledFloodgate;
 
     @Override
     public void onEnable() {
+        enabled = true;
         Panel.OWNER = this;
         Optional.ofNullable(getCommand("undinemailergui")).ifPresent(cmd ->
                 cmd.setExecutor(new GUICommand(this)));
@@ -28,6 +30,7 @@ public final class MailGUIPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        enabled = false;
         Panel.destroyAll();
     }
 
@@ -36,6 +39,10 @@ public final class MailGUIPlugin extends JavaPlugin {
                 getPlugin(MailGUIPlugin.class).mailWrapper,
                 "MailWrapper not initialized!"
         );
+    }
+
+    public static boolean isEnabledPlugin() {
+        return enabled;
     }
 
     public boolean isEnabledFloodgate() {
