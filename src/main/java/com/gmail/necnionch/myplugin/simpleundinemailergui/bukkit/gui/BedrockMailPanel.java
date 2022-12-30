@@ -15,6 +15,7 @@ import org.geysermc.floodgate.api.player.FloodgatePlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class BedrockMailPanel {
@@ -136,14 +137,42 @@ public class BedrockMailPanel {
                                 .map(m -> ChatColor.WHITE + "  " + Utility.replaceColorCode(m))
                                 .collect(Collectors.joining("\n")))
                         .text("\n")
-                        .join(() -> !mail.getAttachments().isEmpty(), () -> StrGen.builder()
-                                .text(ChatColor.RED).text("送付アイテム:")  // todo: show attachments
-                        )
+                        .join(() -> !mail.getAttachments().isEmpty(), () -> {
+                            StrGen sg = StrGen.builder().text(ChatColor.RED).text("送付アイテム: ");
+
+                            if (!mail.isEditmode() && mail.isAttachmentsCancelled() && !mail.getFrom().equals(mailSender)) {
+                                // show cancelled
+                                if (mail.isAttachmentsRefused()) {
+                                    sg.text(ChatColor.DARK_AQUA).text("[受取拒否済み]");
+                                    Optional.ofNullable(mail.getAttachmentsRefusedReason()).ifPresent(reason ->
+                                        sg.text(ChatColor.WHITE + "\n  " + reason));
+                                } else {
+                                    sg.text(ChatColor.DARK_RED).text("[送付キャンセル]");
+                                }
+                            }
+
+                            sg.text("\n");
+                            if (mail.getCostMoney() > 0) {
+                                String costDesc = Optional.ofNullable(mailer.getMailer().getVaultEco())
+                                        .map(eco -> eco.format(mail.getCostMoney()))
+                                        .orElse(mail.getCostMoney() + "");
+                                sg.text(ChatColor.GOLD + "  着払い料金: ").text(ChatColor.WHITE + costDesc);
+                                sg.text("\n");
+                            } else if (mail.getCostItem() != null) {
+                                sg.text(ChatColor.GOLD + "  着払いアイテム: ").text(ChatColor.WHITE + mailer.itemDesc(mail.getCostItem(), true));
+                                sg.text("\n");
+                            }
+
+                            mail.getAttachments().forEach(item ->
+                                    sg.text(ChatColor.WHITE + "  " + mailer.itemDesc(item, true) + "\n"));
+
+                            return sg;
+                        })
                         .toString());
 
         if (mailer.getMailManager().getInboxMails(mailSender).contains(mail)) {
             b.button1("受信箱に戻る");
-            b.button2("送付ボックスを開く");
+            b.button2("送付アイテム");  // -> 開くor取引を確定し開くor受け取りの拒否
             b.validResultHandler(res -> {
                 if (!MailGUIPlugin.isEnabledPlugin())
                     return;
