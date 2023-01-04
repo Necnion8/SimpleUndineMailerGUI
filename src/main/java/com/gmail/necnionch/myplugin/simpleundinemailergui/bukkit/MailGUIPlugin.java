@@ -1,5 +1,6 @@
 package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit;
 
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.commands.GUICommand;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.Panel;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.hooks.MailWrapper;
 import org.bukkit.plugin.java.JavaPlugin;

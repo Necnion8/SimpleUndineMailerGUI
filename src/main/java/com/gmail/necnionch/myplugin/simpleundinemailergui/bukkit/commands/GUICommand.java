@@ -1,5 +1,6 @@
-package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit;
+package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.commands;
 
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.MailGUIPlugin;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.BedrockMailPanel;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.MainPanel;
 import org.bitbucket.ucchy.undine.sender.MailSender;
