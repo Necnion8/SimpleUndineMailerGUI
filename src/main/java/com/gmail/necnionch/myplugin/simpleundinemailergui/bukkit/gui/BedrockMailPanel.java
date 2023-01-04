@@ -2,14 +2,16 @@ package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui;
 
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.MailGUIPlugin;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.hooks.MailWrapper;
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.ModalButtonForm;
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.SimpleButtonForm;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.StrGen;
 import com.google.common.collect.Lists;
 import net.md_5.bungee.api.ChatColor;
 import org.bitbucket.ucchy.undine.MailData;
 import org.bitbucket.ucchy.undine.Utility;
 import org.bitbucket.ucchy.undine.sender.MailSender;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.geysermc.cumulus.form.Form;
-import org.geysermc.cumulus.form.ModalForm;
 import org.geysermc.cumulus.form.SimpleForm;
 import org.geysermc.floodgate.api.player.FloodgatePlayer;
 import org.jetbrains.annotations.Nullable;
@@ -19,7 +21,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class BedrockMailPanel {
-
+    private final JavaPlugin owner = JavaPlugin.getProvidingPlugin(MailGUIPlugin.class);
     private final FloodgatePlayer player;
     private final MailSender mailSender;
     private final MailWrapper mailer;
@@ -50,35 +52,26 @@ public class BedrockMailPanel {
                 .filter(mail -> !mail.isRead(mailSender))
                 .count();
 
-        return SimpleForm.builder()
+        return SimpleButtonForm.builder(owner)
                 .title("メールメニュー")
                 .button(StrGen.builder()
                         .text("受信箱 (" + mails.size() + ")")
                         .text(StrGen.builder(() -> unread > 0)
                                 .text(ChatColor.DARK_RED).text(ChatColor.BOLD).text("\n(未読 " + unread + "通)"))
-                        .toString())
-                .button("ゴミ箱 (" + trash.size() + ")")
-                .validResultHandler(res -> {
-                    if (!MailGUIPlugin.isEnabledPlugin())
-                        return;
-
-                    int idx = res.clickedButtonId();
-                    if (idx == 0) {
-                        player.sendForm(createInboxPanel());
-                    } else if (idx == 1) {
-                        player.sendForm(createTrashPanel());
-                    }
-                })
+                        .toString(),
+                        () -> player.sendForm(createInboxPanel()))
+                .button("ゴミ箱 (" + trash.size() + ")",
+                        () -> player.sendForm(createTrashPanel()))
                 .build();
     }
 
     private Form createInboxPanel() {
         List<MailData> mails = Lists.newArrayList(mailer.getMailManager().getInboxMails(mailSender));
 
-        SimpleForm.Builder b = SimpleForm.builder()
+        SimpleButtonForm b = SimpleButtonForm.builder(owner)
                 .title("受信箱  " + mails.size() + "件")
-                .button("メニューに戻る")
-                .button("メール管理");
+                .button("メニューに戻る", () -> player.sendForm(createMainPanel()))
+                .button("メール管理", () -> player.sendForm(createInboxManagePanel()));
 
         for (MailData mail : mails) {
             boolean unread = !mail.isRead(mailSender);
@@ -92,30 +85,11 @@ public class BedrockMailPanel {
                     .text("\n")
                     .text(mail.getFrom().getName())
                     .text(" : " + mail.getMessage().get(0))
-                    .toString()
-            );
+                    .toString(),
+                    () -> player.sendForm(createViewPanel(mail)));
         }
 
-        return b.validResultHandler(res -> {
-            if (!MailGUIPlugin.isEnabledPlugin())
-                return;
-
-            int idx = res.clickedButtonId();
-            if (idx == 0) {
-                player.sendForm(createMainPanel());
-            } else if (idx == 1) {
-                player.sendForm(createInboxManagePanel());
-            } else {
-                MailData mail;
-                try {
-                    mail = mails.get(idx - 2);
-                } catch (IndexOutOfBoundsException e) {
-                    player.sendForm(createInboxManagePanel());
-                    return;
-                }
-                player.sendForm(createViewPanel(mail));
-            }
-        }).build();
+        return b.build();
     }
 
     private Form createInboxManagePanel() {
@@ -124,7 +98,7 @@ public class BedrockMailPanel {
 
     private Form createViewPanel(MailData mail) {
         String toName = mailer.joinToAndGroup(mail);
-        ModalForm.Builder b = ModalForm.builder()
+        ModalButtonForm b = ModalButtonForm.builder(owner)
                 .title("メール #" + mail.getIndex())
                 .content(StrGen.builder()
                         .text(ChatColor.RED).text("送信者: ").text(ChatColor.WHITE).text(mail.getFrom().getName() + "  ")
@@ -171,33 +145,13 @@ public class BedrockMailPanel {
                         .toString());
 
         if (mailer.getMailManager().getInboxMails(mailSender).contains(mail)) {
-            b.button1("受信箱に戻る");
-            b.button2("送付アイテム");  // -> 開くor取引を確定し開くor受け取りの拒否
-            b.validResultHandler(res -> {
-                if (!MailGUIPlugin.isEnabledPlugin())
-                    return;
-
-                int idx = res.clickedButtonId();
-                if (idx == 0) {
-                    player.sendForm(createInboxPanel());
-                } else if (idx == 1) {
-                    // open attachments box
-                }
-            });
+            b.button1("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
+            b.button2("送付アイテム", () -> player.sendForm(createViewAttachmentsActionPanel(mail)));  // -> 開くor取引を確定し開くor受け取りの拒否
         } else if (mailer.getMailManager().getTrashboxMails(mailSender).contains(mail)) {
-            b.button1("受信箱に戻る");
-            b.button2("送付ボックスを開く");
-            b.validResultHandler(res -> {
-                if (!MailGUIPlugin.isEnabledPlugin())
-                    return;
-
-                int idx = res.clickedButtonId();
-                if (idx == 0) {
-                    player.sendForm(createInboxPanel());
-                } else if (idx == 1) {
-                    // open attachments box
-                }
-            });
+            b.button1("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
+            b.button2("送付アイテム", () -> { /* TODO: open attachment */ });
+        } else {
+            b.button1("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
         }
         return b.build();
     }
@@ -205,10 +159,10 @@ public class BedrockMailPanel {
     private Form createTrashPanel() {
         List<MailData> mails = mailer.getMailManager().getTrashboxMails(mailSender);
 
-        SimpleForm.Builder b = SimpleForm.builder()
+        SimpleButtonForm b = SimpleButtonForm.builder(owner)
                 .title("ゴミ箱  " + mails.size() + "件")
-                .button("メニューに戻る")
-                .button("メール管理");
+                .button("メニューに戻る", () -> player.sendForm(createMainPanel()))
+                .button("メール管理", () -> player.sendForm(createTrashPanel()));
 
         for (MailData mail : mails) {
             b.button(StrGen.builder()
@@ -217,34 +171,55 @@ public class BedrockMailPanel {
                             .text("\n")
                             .text(mail.getFrom().getName())
                             .text(" : " + mail.getMessage().get(0))
-                            .toString()
+                            .toString(),
+                    () -> player.sendForm(createViewPanel(mail))
             );
         }
 
-        return b.validResultHandler(res -> {
-            if (!MailGUIPlugin.isEnabledPlugin())
-                return;
-
-            int idx = res.clickedButtonId();
-            if (idx == 0) {
-                player.sendForm(createMainPanel());
-            } else if (idx == 1) {
-                player.sendForm(createTrashPanel());
-            } else {
-                MailData mail;
-                try {
-                    mail = mails.get(idx - 2);
-                } catch (IndexOutOfBoundsException e) {
-                    player.sendForm(createTrashManagePanel());
-                    return;
-                }
-                player.sendForm(createViewPanel(mail));
-            }
-        }).build();
+        return b.build();
     }
 
     private Form createTrashManagePanel() {
         return SimpleForm.builder().build();
     }
+
+    private Form createViewAttachmentsActionPanel(MailData mail) {
+        SimpleButtonForm b = SimpleButtonForm.builder(JavaPlugin.getProvidingPlugin(MailGUIPlugin.class))
+                .title("メール #" + mail.getIndex() + " - 送付アイテムの操作")
+                .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+
+        if (mail.getFrom().equals(mailSender) || !mail.getTo().contains(mailSender))
+            return b.build();
+
+        if (!mail.isEditmode()) {
+            if (!mail.isAttachmentsCancelled() && mail.isRecipient(mailSender)) {
+                if (mail.getCostMoney() > 0) {
+                    b.button("お金を支払う", () -> {
+
+                    });
+                    b.button("受け取りを拒否する", () -> {
+
+                    });
+
+                } else if (mail.getCostItem() != null) {
+                    b.button("商品を支払う", () -> {
+
+                    });
+                    b.button("受け取りを拒否する", () -> {
+
+                    });
+
+                } else {
+                    b.button("送付ボックスを開く", () -> {
+
+                    });
+                }
+            }
+        }
+
+        return b.build();
+    }
+
+
 
 }
