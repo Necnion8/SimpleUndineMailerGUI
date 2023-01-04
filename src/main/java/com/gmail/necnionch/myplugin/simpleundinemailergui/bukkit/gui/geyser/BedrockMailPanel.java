@@ -1,6 +1,7 @@
-package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui;
+package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.geyser;
 
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.MailGUIPlugin;
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.MainPanel;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.hooks.MailWrapper;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.ModalButtonForm;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.SimpleButtonForm;
