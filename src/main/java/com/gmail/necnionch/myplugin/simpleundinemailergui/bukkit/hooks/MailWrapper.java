@@ -1,7 +1,11 @@
 package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.hooks;
 
 import org.bitbucket.ucchy.undine.*;
+import org.bitbucket.ucchy.undine.bridge.VaultEcoBridge;
 import org.bitbucket.ucchy.undine.sender.MailSender;
+import org.bukkit.OfflinePlayer;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.text.SimpleDateFormat;
@@ -64,5 +68,116 @@ public class MailWrapper {
         }
     }
 
+
+    public boolean checkCostMoney(MailSender ms, MailData mail) {
+        VaultEcoBridge eco = mailer.getVaultEco();
+        double fee = mail.getCostMoney();
+        return eco.has(ms.getOfflinePlayer(), fee);
+    }
+
+    public boolean tryAcceptCostMoney(MailSender ms, MailData mail) {
+        VaultEcoBridge eco = mailer.getVaultEco();
+        double fee = mail.getCostMoney();
+
+        OfflinePlayer from = mail.getFrom().getOfflinePlayer();
+        double preTo = eco.getBalance(ms.getOfflinePlayer());
+        double preFrom = eco.getBalance(from);
+
+        if (!eco.has(ms.getOfflinePlayer(), fee))
+            return false;
+        if (!eco.withdrawPlayer(ms.getOfflinePlayer(), fee))
+            return false;
+
+        boolean depositResult = eco.depositPlayer(from, fee);
+
+        // https://github.com/ucchyocean/UndineMailer/blob/862e4566b876852cf8ed77997cb4da11c46fa0c2/src/main/java/org/bitbucket/ucchy/undine/command/UndineAttachCommand.java#L423
+        if ( !depositResult || ( mailer.getUndineConfig().getDepositErrorOnUnmatch()
+                && ((preFrom + fee) > eco.getBalance(from)) ) ) {
+            // 返金
+            eco.setPlayer(ms.getOfflinePlayer(), preTo);
+            eco.setPlayer(from, preFrom);
+            return false;
+        }
+
+        // 着払いを0に設定して保存
+        mail.setCostMoney(0);
+        mailer.getMailManager().saveMail(mail);
+        return true;
+    }
+
+    private boolean hasItem(Player player, ItemStack item) {
+        int total = 0;
+        for ( ItemStack i : player.getInventory().getContents() ) {
+            if ( i != null && i.getType() == item.getType()
+                    && i.getDurability() == item.getDurability() ) {
+                total += i.getAmount();
+                if ( total >= item.getAmount() ) return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean consumeItem(Player player, ItemStack item) {
+        Inventory inv = player.getInventory();
+        int remain = item.getAmount();
+        for ( int index=0; index<inv.getSize(); index++ ) {
+            ItemStack i = inv.getItem(index);
+            if ( i == null || i.getType() != item.getType()
+                    || i.getDurability() != item.getDurability() ) {
+                continue;
+            }
+
+            if ( i.getAmount() >= remain ) {
+                if ( i.getAmount() == remain ) {
+                    inv.clear(index);
+                } else {
+                    i.setAmount(i.getAmount() - remain);
+                    inv.setItem(index, i);
+                }
+                remain = 0;
+                break;
+            } else {
+                remain -= i.getAmount();
+                inv.clear(index);
+            }
+        }
+        player.updateInventory();
+        return (remain <= 0);
+    }
+
+    public boolean checkCostItem(Player player, MailSender ms, MailData mail) {
+        ItemStack fee = mail.getCostItem();
+        return hasItem(player, fee);
+    }
+
+    public boolean tryAcceptCostItem(Player player, MailSender ms, MailData mail) {
+        ItemStack fee = mail.getCostItem();
+        if (!hasItem(player, fee))
+            return false;
+        consumeItem(player, fee);
+
+        // メールの送信元に送金
+        MailData reply = new MailData();
+        reply.setTo(0, mail.getFrom());
+        reply.setFrom(ms);
+        reply.setMessage(0, Messages.get(
+                "BoxOpenCostItemSenderResult",
+                new String[]{"%to", "%material", "%amount"},
+                new String[]{ms.getName(), fee.getType().toString(), fee.getAmount() + ""}));
+
+        int stackSize = fee.getType().getMaxStackSize();
+        while ( fee.getAmount() > stackSize ) {
+            reply.addAttachment(new ItemStack(fee.getType(), stackSize));
+            fee.setAmount(fee.getAmount() - stackSize);
+        }
+        reply.addAttachment(fee);
+
+        mailer.getMailManager().sendNewMail(reply);
+
+        // 着払いをnullに設定して保存
+        mail.setCostItem(null);
+        mailer.getMailManager().saveMail(mail);
+        return true;
+    }
 
 }
