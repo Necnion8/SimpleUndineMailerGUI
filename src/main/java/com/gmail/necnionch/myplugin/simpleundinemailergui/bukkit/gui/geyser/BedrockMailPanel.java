@@ -11,6 +11,7 @@ import net.md_5.bungee.api.ChatColor;
 import org.bitbucket.ucchy.undine.MailData;
 import org.bitbucket.ucchy.undine.Utility;
 import org.bitbucket.ucchy.undine.sender.MailSender;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.geysermc.cumulus.form.Form;
@@ -190,40 +191,44 @@ public class BedrockMailPanel {
                 .title("メール #" + mail.getIndex() + " - 送付アイテムの操作")
                 .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
 
-        if (mail.getFrom().equals(mailSender) || !mail.getTo().contains(mailSender))
+        if (!mail.isRecipient(mailSender) || mail.getAttachments().isEmpty())
             return b.build();
 
-        if (!mail.isEditmode()) {
-            if (!mail.isAttachmentsCancelled() && mail.isRecipient(mailSender)) {
-                if (mail.getCostMoney() > 0) {
-                    String costDesc = Optional.ofNullable(mailer.getMailer().getVaultEco())
-                            .map(eco -> eco.format(mail.getCostMoney()))
-                            .orElse(mail.getCostMoney() + "");
-                    boolean hasMoney = mailer.checkCostMoney(mailSender, mail);
+        if (mail.isAttachmentsCancelled()) {
+            b.content(ChatColor.RED + "既に添付アイテムはキャンセルされています");
+            return b.build();
+        }
 
-                    b.button(StrGen.builder()
+        if (mail.getCostMoney() > 0) {
+            String costDesc = Optional.ofNullable(mailer.getMailer().getVaultEco())
+                    .map(eco -> eco.format(mail.getCostMoney()))
+                    .orElse(mail.getCostMoney() + "");
+            boolean hasMoney = mailer.checkCostMoney(mailSender, mail);
+
+            b.button(StrGen.builder()
                             .text("お金を支払う\n")
                             .text(StrGen.builder()
                                     .text(hasMoney ? "" : ChatColor.DARK_RED.toString())
                                     .text("必要: " + costDesc))
                             .toString(),
-                            () -> {
-                                if (mailer.tryAcceptCostMoney(mailSender, mail)) {
-                                    openAttachmentInventory(mailSender.getPlayer(), mail, () -> {});
-                                } else {
-                                    player.sendForm(createViewAttachmentsActionPanel(mail));
-                                }
+                    () -> {
+                        if (mailer.tryAcceptCostMoney(mailSender, mail)) {
+                            openAttachmentInventory(mailSender.getPlayer(), mail, () -> {
                             });
-
-                    b.button("受け取りを拒否する", () -> {
-
+                        } else {
+                            player.sendForm(createViewAttachmentsActionPanel(mail));
+                        }
                     });
 
-                } else if (mail.getCostItem() != null) {
-                    String costDesc = mailer.itemDesc(mail.getCostItem(), true);
-                    boolean hasItem = mailer.checkCostItem(mailSender.getPlayer(), mailSender, mail);
+            b.button("受け取りを拒否する", () -> {
 
-                    b.button(StrGen.builder()
+            });
+
+        } else if (mail.getCostItem() != null) {
+            String costDesc = mailer.itemDesc(mail.getCostItem(), true);
+            boolean hasItem = mailer.checkCostItem(mailSender.getPlayer(), mailSender, mail);
+
+            b.button(StrGen.builder()
                             .text("商品を支払う\n")
                             .text(StrGen.builder()
                                     .text(hasItem ? "" : ChatColor.DARK_RED.toString())
@@ -237,16 +242,15 @@ public class BedrockMailPanel {
                                 }
                             });
 
-                    b.button("受け取りを拒否する", () -> {
+            b.button("受け取りを拒否する", () -> {
 
-                    });
+            });
 
-                } else {
-                    b.button("送付ボックスを開く", () -> {
-                        openAttachmentInventory(mailSender.getPlayer(), mail, () -> {});
-                    });
-                }
-            }
+        } else {
+            b.button("送付ボックスを開く", () -> {
+                openAttachmentInventory(mailSender.getPlayer(), mail, () -> {
+                });
+            });
         }
 
         return b.build();
