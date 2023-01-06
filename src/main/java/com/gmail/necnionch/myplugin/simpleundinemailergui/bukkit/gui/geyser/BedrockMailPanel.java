@@ -152,10 +152,22 @@ public class BedrockMailPanel {
 
         if (mailer.getMailManager().getInboxMails(mailSender).contains(mail)) {
             b.button1("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
-            b.button2("送付アイテム", () -> player.sendForm(createViewAttachmentsActionPanel(mail)));
+            b.button2("送付アイテム", () -> {
+                if (mail.isRecipient(mailSender) && !mail.getAttachments().isEmpty() && !mail.isAttachmentsCancelled() && mail.getCostMoney() <= 0 && mail.getCostItem() == null) {
+                    openAttachmentInventory(mailSender.getPlayer(), mail, null);
+                } else {
+                    player.sendForm(createViewAttachmentsActionPanel(mail));
+                }
+            });
         } else if (mailer.getMailManager().getTrashboxMails(mailSender).contains(mail)) {
-            b.button1("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
-            b.button2("送付アイテム", () -> player.sendForm(createViewAttachmentsActionPanel(mail)));
+            b.button1("ゴミ箱に戻る", () -> player.sendForm(createTrashPanel()));
+            b.button2("送付アイテム", () -> {
+                if (mail.isRecipient(mailSender) && !mail.getAttachments().isEmpty() && !mail.isAttachmentsCancelled() && mail.getCostMoney() <= 0 && mail.getCostItem() == null) {
+                    openAttachmentInventory(mailSender.getPlayer(), mail, null);
+                } else {
+                    player.sendForm(createViewAttachmentsActionPanel(mail));
+                }
+            });
         } else {
             b.button1("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
         }
@@ -255,9 +267,7 @@ public class BedrockMailPanel {
             });
 
         } else {
-            b.button("送付ボックスを開く", () -> {
-                openAttachmentInventory(mailSender.getPlayer(), mail, null);
-            });
+            b.button("送付ボックスを開く", () -> openAttachmentInventory(mailSender.getPlayer(), mail, null));
         }
 
         return b.build();
