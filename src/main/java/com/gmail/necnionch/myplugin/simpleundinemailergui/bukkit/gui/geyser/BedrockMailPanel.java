@@ -214,8 +214,7 @@ public class BedrockMailPanel {
                             .toString(),
                     () -> {
                         if (mailer.tryAcceptCostMoney(mailSender, mail)) {
-                            openAttachmentInventory(mailSender.getPlayer(), mail, () -> {
-                            });
+                            openAttachmentInventory(mailSender.getPlayer(), mail, null);
                         } else {
                             player.sendForm(SimpleButtonForm.builder(owner)
                                     .title("メール #" + mail.getIndex() + " - 送付アイテムの操作")
@@ -241,7 +240,7 @@ public class BedrockMailPanel {
                             .toString(),
                             () -> {
                                 if (mailer.tryAcceptCostItem(mailSender.getPlayer(), mailSender, mail)) {
-                                    openAttachmentInventory(mailSender.getPlayer(), mail, () -> {});
+                                    openAttachmentInventory(mailSender.getPlayer(), mail, null);
                                 } else {
                                     player.sendForm(SimpleButtonForm.builder(owner)
                                             .title("メール #" + mail.getIndex() + " - 送付アイテムの操作")
@@ -257,21 +256,24 @@ public class BedrockMailPanel {
 
         } else {
             b.button("送付ボックスを開く", () -> {
-                openAttachmentInventory(mailSender.getPlayer(), mail, () -> {
-                });
+                openAttachmentInventory(mailSender.getPlayer(), mail, null);
             });
         }
 
         return b.build();
     }
 
-    private void openAttachmentInventory(Player player, MailData mail, Runnable close) {
+    private void openAttachmentInventory(Player player, MailData mail, @Nullable Runnable close) {
         Bukkit.dispatchCommand(player, "umail attach " + mail.getIndex());
         Bukkit.getPluginManager().registerEvents(new Listener() {
             @EventHandler(priority = EventPriority.LOWEST)
             public void onClose(InventoryCloseEvent event) {
                 HandlerList.unregisterAll(this);
-                close.run();
+                if (close != null) {
+                    close.run();
+                } else {
+                    BedrockMailPanel.this.player.sendForm(createViewPanel(mail));
+                }
             }
         }, owner);
     }
