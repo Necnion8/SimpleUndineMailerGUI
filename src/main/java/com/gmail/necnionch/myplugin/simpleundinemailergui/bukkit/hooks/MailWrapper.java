@@ -11,6 +11,7 @@ import org.bukkit.inventory.ItemStack;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class MailWrapper {
@@ -68,15 +69,24 @@ public class MailWrapper {
         }
     }
 
+    public String formatCostMoney(double cost) {
+        return Optional.ofNullable(mailer.getVaultEco())
+                .map(eco -> eco.format(cost))
+                .orElse(cost + "");
+    }
 
     public boolean checkCostMoney(MailSender ms, MailData mail) {
         VaultEcoBridge eco = mailer.getVaultEco();
+        if (eco == null)
+            return false;
         double fee = mail.getCostMoney();
         return eco.has(ms.getOfflinePlayer(), fee);
     }
 
     public boolean tryAcceptCostMoney(MailSender ms, MailData mail) {
         VaultEcoBridge eco = mailer.getVaultEco();
+        if (eco == null)
+            return false;
         double fee = mail.getCostMoney();
 
         OfflinePlayer from = mail.getFrom().getOfflinePlayer();

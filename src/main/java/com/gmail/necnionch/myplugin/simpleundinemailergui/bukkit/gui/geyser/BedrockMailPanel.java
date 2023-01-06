@@ -135,9 +135,7 @@ public class BedrockMailPanel {
 
                             sg.text("\n");
                             if (mail.getCostMoney() > 0) {
-                                String costDesc = Optional.ofNullable(mailer.getMailer().getVaultEco())
-                                        .map(eco -> eco.format(mail.getCostMoney()))
-                                        .orElse(mail.getCostMoney() + "");
+                                String costDesc = mailer.formatCostMoney(mail.getCostMoney());
                                 sg.text(ChatColor.GOLD + "  着払い料金: ").text(ChatColor.WHITE + costDesc);
                                 sg.text("\n");
                             } else if (mail.getCostItem() != null) {
@@ -205,9 +203,7 @@ public class BedrockMailPanel {
         }
 
         if (mail.getCostMoney() > 0) {
-            String costDesc = Optional.ofNullable(mailer.getMailer().getVaultEco())
-                    .map(eco -> eco.format(mail.getCostMoney()))
-                    .orElse(mail.getCostMoney() + "");
+            String costDesc = mailer.formatCostMoney(mail.getCostMoney());
             boolean hasMoney = mailer.checkCostMoney(mailSender, mail);
 
             b.button(StrGen.builder()
