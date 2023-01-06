@@ -209,14 +209,18 @@ public class BedrockMailPanel {
                             .text("お金を支払う\n")
                             .text(StrGen.builder()
                                     .text(hasMoney ? "" : ChatColor.DARK_RED.toString())
-                                    .text("必要: " + costDesc))
+                                    .text("必要: " + ChatColor.BOLD + costDesc))
                             .toString(),
                     () -> {
                         if (mailer.tryAcceptCostMoney(mailSender, mail)) {
                             openAttachmentInventory(mailSender.getPlayer(), mail, () -> {
                             });
                         } else {
-                            player.sendForm(createViewAttachmentsActionPanel(mail));
+                            player.sendForm(SimpleButtonForm.builder(owner)
+                                    .title("メール #" + mail.getIndex() + " - 送付アイテムの操作")
+                                    .content(ChatColor.RED + "必要なお金が足りません！\n" + ChatColor.WHITE + "要求: " + ChatColor.GOLD + ChatColor.BOLD + costDesc)
+                                    .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)))
+                                    .build());
                         }
                     });
 
@@ -232,13 +236,17 @@ public class BedrockMailPanel {
                             .text("商品を支払う\n")
                             .text(StrGen.builder()
                                     .text(hasItem ? "" : ChatColor.DARK_RED.toString())
-                                    .text("必要: " + costDesc))
+                                    .text("必要: " + ChatColor.BOLD + costDesc))
                             .toString(),
                             () -> {
                                 if (mailer.tryAcceptCostItem(mailSender.getPlayer(), mailSender, mail)) {
                                     openAttachmentInventory(mailSender.getPlayer(), mail, () -> {});
                                 } else {
-                                    player.sendForm(createViewAttachmentsActionPanel(mail));
+                                    player.sendForm(SimpleButtonForm.builder(owner)
+                                            .title("メール #" + mail.getIndex() + " - 送付アイテムの操作")
+                                            .content(ChatColor.RED + "必要なアイテムが足りません！\n" + ChatColor.WHITE + "要求: " + ChatColor.GOLD + ChatColor.BOLD + costDesc)
+                                            .button("送付アイテム", () -> player.sendForm(createViewAttachmentsActionPanel(mail)))
+                                            .build());
                                 }
                             });
 
