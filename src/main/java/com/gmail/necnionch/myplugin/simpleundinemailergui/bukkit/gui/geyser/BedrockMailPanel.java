@@ -13,6 +13,11 @@ import org.bitbucket.ucchy.undine.Utility;
 import org.bitbucket.ucchy.undine.sender.MailSender;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
+import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.geysermc.cumulus.form.Form;
 import org.geysermc.cumulus.form.SimpleForm;
@@ -265,7 +270,14 @@ public class BedrockMailPanel {
     }
 
     private void openAttachmentInventory(Player player, MailData mail, Runnable close) {
-        // TODO: open attachments
+        Bukkit.dispatchCommand(player, "umail attach " + mail.getIndex());
+        Bukkit.getPluginManager().registerEvents(new Listener() {
+            @EventHandler(priority = EventPriority.LOWEST)
+            public void onClose(InventoryCloseEvent event) {
+                HandlerList.unregisterAll(this);
+                close.run();
+            }
+        }, owner);
     }
 
 
