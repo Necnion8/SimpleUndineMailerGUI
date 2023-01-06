@@ -152,10 +152,10 @@ public class BedrockMailPanel {
 
         if (mailer.getMailManager().getInboxMails(mailSender).contains(mail)) {
             b.button1("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
-            b.button2("送付アイテム", () -> player.sendForm(createViewAttachmentsActionPanel(mail)));  // -> 開くor取引を確定し開くor受け取りの拒否
+            b.button2("送付アイテム", () -> player.sendForm(createViewAttachmentsActionPanel(mail)));
         } else if (mailer.getMailManager().getTrashboxMails(mailSender).contains(mail)) {
             b.button1("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
-            b.button2("送付アイテム", () -> openAttachmentInventory(mailSender.getPlayer(), mail, () -> {}));
+            b.button2("送付アイテム", () -> player.sendForm(createViewAttachmentsActionPanel(mail)));
         } else {
             b.button1("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
         }
@@ -194,7 +194,7 @@ public class BedrockMailPanel {
                 .title("メール #" + mail.getIndex() + " - 送付アイテムの操作")
                 .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
 
-        if (!mail.isRecipient(mailSender) || mail.getAttachments().isEmpty())
+        if (!mail.isRecipient(mailSender) || mail.getAttachments().isEmpty() || mailer.getMailManager().getTrashboxMails(mailSender).contains(mail))
             return b.build();
 
         if (mail.isAttachmentsCancelled()) {
