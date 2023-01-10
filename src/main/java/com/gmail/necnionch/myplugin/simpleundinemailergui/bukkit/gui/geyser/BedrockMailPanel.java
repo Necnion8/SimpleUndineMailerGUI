@@ -56,22 +56,25 @@ public class BedrockMailPanel {
     }
 
     private Form createMainPanel() {
-        List<MailData> mails = mailer.getMailManager().getInboxMails(mailSender);
-        List<MailData> trash = mailer.getMailManager().getTrashboxMails(mailSender);
+        List<MailData> inMails = mailer.getMailManager().getInboxMails(mailSender);
+        List<MailData> outMails = mailer.getMailManager().getOutboxMails(mailSender);
+        List<MailData> trashMails = mailer.getMailManager().getTrashboxMails(mailSender);
 
-        long unread = mails.stream()
+        long unread = inMails.stream()
                 .filter(mail -> !mail.isRead(mailSender))
                 .count();
 
         return SimpleButtonForm.builder(owner)
                 .title("メールメニュー")
                 .button(StrGen.builder()
-                        .text("受信箱 (" + mails.size() + ")")
-                        .text(StrGen.builder(() -> unread > 0)
-                                .text(ChatColor.DARK_RED).text(ChatColor.BOLD).text("\n(未読 " + unread + "通)"))
-                        .toString(),
+                                .text("受信箱 (" + inMails.size() + ")")
+                                .text(StrGen.builder(() -> unread > 0)
+                                        .text(ChatColor.DARK_RED).text(ChatColor.BOLD).text("\n(未読 " + unread + "通)"))
+                                .toString(),
                         () -> player.sendForm(createInboxPanel()))
-                .button("ゴミ箱 (" + trash.size() + ")",
+                .button("送信箱 (" + outMails.size() + ")",
+                        () -> player.sendForm(createOutboxPanel()))
+                .button("ゴミ箱 (" + trashMails.size() + ")",
                         () -> player.sendForm(createTrashPanel()))
                 .build();
     }
@@ -129,32 +132,32 @@ public class BedrockMailPanel {
                 .button("メニューに戻る", () -> player.sendForm(createMainPanel()))
                 .button("メール管理", () -> player.sendForm(createOutboxManagePanel()));
 
-//        for (MailData mail : mails) {
-//            String content;
-//            if (mail.getMessage().stream().anyMatch(((Predicate<String>) String::isEmpty).negate())) {
-//                content = mail.getMessage().get(0);
-//            } else if (mail.isAttachmentsRefused()) {
-//                content = "受信者により添付が受取拒否されました";
-//            } else if (mail.isAttachmentsCancelled()) {
-//                content = "送信者により添付がキャンセルされました";
-//            } else if (!mail.getAttachments().isEmpty()) {
-//                content = mailer.itemDesc(mail.getAttachments().get(0), true);
-//                if (mail.getAttachments().size() > 1)
-//                    content += " ...他 " + (mail.getAttachments().size() - 1) + "個";
-//            } else {
-//                content = "";
-//            }
-//
-//            b.button(StrGen.builder()
-//                            .text("#" + mail.getIndex())
-//                            .text("  送信日時: " + mailer.formatDateOrReadable(mail.getDate()))
-//                            .join(() -> !mail.getAttachments().isEmpty(), "  (送付: " + mail.getAttachments().size() + ")")
-//                            .text("\n")
-//                            .text(mail.getFrom().getName())
-//                            .text(" : ").text(content)
-//                            .toString(),
-//                    () -> player.sendForm(createViewPanel(mail)));
-//        }
+        for (MailData mail : mails) {
+            String content;
+            if (mail.getMessage().stream().anyMatch(((Predicate<String>) String::isEmpty).negate())) {
+                content = mail.getMessage().get(0);
+            } else if (mail.isAttachmentsRefused()) {
+                content = "受信者により添付が受取拒否されました";
+            } else if (mail.isAttachmentsCancelled()) {
+                content = "送信者により添付がキャンセルされました";
+            } else if (!mail.getAttachments().isEmpty()) {
+                content = mailer.itemDesc(mail.getAttachments().get(0), true);
+                if (mail.getAttachments().size() > 1)
+                    content += " ...他 " + (mail.getAttachments().size() - 1) + "個";
+            } else {
+                content = "";
+            }
+
+            b.button(StrGen.builder()
+                            .text("#" + mail.getIndex())
+                            .text("  送信日時: " + mailer.formatDateOrReadable(mail.getDate()))
+                            .join(() -> !mail.getAttachments().isEmpty(), "  (送付: " + mail.getAttachments().size() + ")")
+                            .text("\n")
+                            .text(mail.getFrom().getName())
+                            .text(" : ").text(content)
+                            .toString(),
+                    () -> player.sendForm(createViewPanel(mail)));
+        }
 
         return b.build();
     }
@@ -213,6 +216,9 @@ public class BedrockMailPanel {
         if (mailer.getMailManager().getTrashboxMails(mailSender).contains(mail)) {
             b.button1("ゴミ箱に戻る", () -> player.sendForm(createTrashPanel()));
             b.button2("メール操作", () -> player.sendForm(createTrashActionPanel(mail)));
+        } else if (mailer.getMailManager().getOutboxMails(mailSender).contains(mail)) {
+            b.button1("送信箱に戻る", () -> player.sendForm(createOutboxPanel()));
+            b.button2("メール操作", () -> player.sendForm(createOutboxActionPanel(mail)));
         } else {
             b.button1("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
             b.button2("メール操作", () -> player.sendForm(createInboxActionPanel(mail)));
@@ -288,8 +294,6 @@ public class BedrockMailPanel {
                 if (mailer.getMailManager().getOutboxMails(mailSender).contains(mail))
                     form.button("送信箱に戻る", () -> player.sendForm(createOutboxPanel()));
                 form.button("ゴミ箱に戻る", () -> player.sendForm(createTrashPanel()));
-                mail.removeTrashFlag(mailSender);
-                mailer.getMailManager().saveMail(mail);
             }
             player.sendForm(form.build());
         });
@@ -422,6 +426,71 @@ public class BedrockMailPanel {
             });
         }
 
+        return b.build();
+    }
+
+    private Form createOutboxActionPanel(MailData mail) {
+        String panelTitle = "メール #" + mail.getIndex();
+        SimpleButtonForm b = SimpleButtonForm.builder(JavaPlugin.getProvidingPlugin(MailGUIPlugin.class))
+                .title(panelTitle)
+                .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+
+        if (mail.isEditmode() || !mail.getFrom().equals(mailSender) || !mailer.getMailManager().getOutboxMails(mailSender).contains(mail))
+            return b.build();
+
+        if (!mail.getAttachments().isEmpty()) {
+            if (mail.isAttachmentsCancelled()) {
+                b.button("送付ボックスを開く", () -> openAttachmentInventory(mailSender.getPlayer(), mail, null));
+            } else if (!mail.isAttachmentsOpened()) {
+                b.button("添付アイテムをキャンセルする", () -> {
+                    SimpleButtonForm form = SimpleButtonForm.builder(owner).title(panelTitle);
+                    if (mail.isAttachmentsCancelled()) {
+                        form.content(ChatColor.RED + "既に添付アイテムはキャンセルされています");
+                        form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                    } else if (mail.isAttachmentsOpened()) {
+                        form.content(ChatColor.RED + "既に受信者がボックスを開いたため、キャンセルできません");
+                        form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                    } else {
+                        mail.cancelAttachments();
+                        mailer.getMailManager().saveMail(mail);
+                        openAttachmentInventory(mailSender.getPlayer(), mail, null);
+
+                        // 受信者側にメッセージを表示する
+                        String message = Messages.get(
+                                "InformationAttachWasCanceledBySender",
+                                new String[]{"%num", "%sender"},
+                                new String[]{mail.getIndex() + "", player.getUsername()});
+                        mail.getToTotal().stream()
+                                .filter(MailSender::isOnline)
+                                .forEach(to -> to.sendMessage(message));
+                        return;
+                    }
+                    player.sendForm(form.build());
+                });
+            }
+        }
+
+        if (mail.getAttachments().isEmpty()) {
+            b.button("ゴミ箱に移動する", () -> {
+                SimpleButtonForm form = SimpleButtonForm.builder(owner)
+                        .title(panelTitle);
+                if (!mail.isRelatedWith(mailSender)) {
+                    form.content(ChatColor.RED + "指定されたメールはあなた宛ではないので表示できません");
+                    form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                } else if (!mail.isRead(mailSender)) {
+                    form.content(ChatColor.RED + "未読メールのためゴミ箱に移動できません");
+                    form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                } else {
+                    form.content("ゴミ箱に移動しました");
+                    form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                    form.button("ゴミ箱に戻る", () -> player.sendForm(createTrashPanel()));
+                    form.button("送信箱に戻る", () -> player.sendForm(createOutboxPanel()));
+                    mail.setTrashFlag(mailSender);
+                    mailer.getMailManager().saveMail(mail);
+                }
+                player.sendForm(form.build());
+            });
+        }
         return b.build();
     }
 
