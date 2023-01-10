@@ -269,7 +269,7 @@ public class BedrockMailPanel {
                 .title(panelTitle)
                 .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
 
-        if (mail.isEditmode() || !mail.isRecipient(mailSender) || !mail.isSetTrash(mailSender))
+        if (mail.isEditmode() || !mail.isRelatedWith(mailSender) || !mail.isSetTrash(mailSender))
             return b.build();
 
         b.button("ゴミ箱から戻す", () -> {
@@ -279,6 +279,8 @@ public class BedrockMailPanel {
                 form.content(ChatColor.RED + "指定されたメールはあなた宛ではないので表示できません");
                 form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
             } else {
+                mail.removeTrashFlag(mailSender);
+                mailer.getMailManager().saveMail(mail);
                 form.content("ゴミ箱から戻しました");
                 form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
                 if (mailer.getMailManager().getInboxMails(mailSender).contains(mail))
@@ -318,10 +320,7 @@ public class BedrockMailPanel {
                     form.content("ゴミ箱に移動しました");
                     form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
                     form.button("ゴミ箱に戻る", () -> player.sendForm(createTrashPanel()));
-                    if (mailer.getMailManager().getInboxMails(mailSender).contains(mail))
-                        form.button("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
-                    if (mailer.getMailManager().getOutboxMails(mailSender).contains(mail))
-                        form.button("送信箱に戻る", () -> player.sendForm(createOutboxPanel()));
+                    form.button("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
                     mail.setTrashFlag(mailSender);
                     mailer.getMailManager().saveMail(mail);
                 }
