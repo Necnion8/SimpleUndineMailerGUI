@@ -9,6 +9,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -44,6 +45,28 @@ public class MailWrapper {
     }
 
     public String formatDate(Date date) {
+        return (new SimpleDateFormat(Messages.get("DateFormat"))).format(date);
+    }
+
+    public String formatDateOrReadable(Date date) {
+        Date now = new Date();
+        if (now.getTime() - date.getTime() < 60 * 1000) {
+            return "たった今";
+        } else if (now.getTime() - date.getTime() < 60 * 60 * 1000) {
+            long minutes = (now.getTime() - date.getTime()) / (60 * 1000);
+            return minutes + "分前";
+        } else if (now.getTime() - date.getTime() < 24 * 60 * 60 * 1000) {
+            long minutes = (now.getTime() - date.getTime()) / (60 * 60 * 1000);
+            return minutes + "時間前";
+        } else {
+            Calendar now2 = Calendar.getInstance();
+            now2.setTime(now);
+            Calendar date2 = Calendar.getInstance();
+            date2.setTime(date);
+            int days = now2.get(Calendar.DAY_OF_YEAR) - date2.get(Calendar.DAY_OF_YEAR);
+            if (now2.get(Calendar.YEAR) == date2.get(Calendar.YEAR) && days <= 7)
+                return days + "日前";
+        }
         return (new SimpleDateFormat(Messages.get("DateFormat"))).format(date);
     }
 
