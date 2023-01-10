@@ -171,6 +171,11 @@ public class BedrockMailPanel {
         } else {
             b.button1("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
         }
+
+        if (mail.getAttachments().size() == 0 || mail.isAttachmentsCancelled()) {
+            mail.setReadFlag(mailSender);
+            mailer.getMailManager().saveMail(mail);
+        }
         return b.build();
     }
 
