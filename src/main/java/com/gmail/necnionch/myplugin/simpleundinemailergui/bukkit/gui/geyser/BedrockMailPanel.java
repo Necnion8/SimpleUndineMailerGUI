@@ -222,11 +222,11 @@ public class BedrockMailPanel {
         } else {
             b.button1("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
             b.button2("メール操作", () -> player.sendForm(createInboxActionPanel(mail)));
+        }
 
-            if (!mail.isRead(mailSender) && mail.getAttachments().size() == 0 || mail.isAttachmentsCancelled()) {
-                mail.setReadFlag(mailSender);
-                mailer.getMailManager().saveMail(mail);
-            }
+        if (!mail.isRead(mailSender) && (mail.getAttachments().size() == 0 || mail.isAttachmentsCancelled())) {
+            mail.setReadFlag(mailSender);
+            mailer.getMailManager().saveMail(mail);
         }
         return b.build();
     }
