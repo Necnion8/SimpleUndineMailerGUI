@@ -269,7 +269,7 @@ public class BedrockMailPanel {
                 .title(panelTitle)
                 .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
 
-        if (!mail.isRecipient(mailSender) || !mail.isSetTrash(mailSender))
+        if (mail.isEditmode() || !mail.isRecipient(mailSender) || !mail.isSetTrash(mailSender))
             return b.build();
 
         b.button("ゴミ箱から戻す", () -> {
@@ -301,7 +301,7 @@ public class BedrockMailPanel {
                 .title(panelTitle)
                 .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
 
-        if (!mail.isRecipient(mailSender) || mailer.getMailManager().getTrashboxMails(mailSender).contains(mail))
+        if (mail.isEditmode() || !mail.isRecipient(mailSender) || !mailer.getMailManager().getInboxMails(mailSender).contains(mail))
             return b.build();
 
         if (mail.getAttachments().isEmpty()) {
