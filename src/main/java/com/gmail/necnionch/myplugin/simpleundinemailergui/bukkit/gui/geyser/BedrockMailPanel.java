@@ -188,11 +188,15 @@ public class BedrockMailPanel {
 
         if (mail.isAttachmentsRefused()) {
             content.text(ChatColor.RED).text("添付アイテム: ").text("\n")
-                    .text(ChatColor.YELLOW + "  受信者により添付が受取拒否されました");
+                    .text(ChatColor.YELLOW + "  受信者により受取拒否されました\n");
+
+            if (mail.getAttachmentsRefusedReason() != null) {
+                content.text("\n  ").text(ChatColor.WHITE).text(mail.getAttachmentsRefusedReason()).text("\n");
+            }
 
         } else if (mail.isAttachmentsCancelled()) {
             content.text(ChatColor.RED).text("添付アイテム: ").text("\n")
-                    .text(ChatColor.YELLOW + "  送信者により添付がキャンセルされました");
+                    .text(ChatColor.YELLOW + "  送信者によりキャンセルされました\n");
 
         } else if (!mail.getAttachments().isEmpty()) {
             content.text(ChatColor.RED).text("添付アイテム: ").text("\n");
@@ -207,6 +211,14 @@ public class BedrockMailPanel {
                 content.text(ChatColor.GOLD + "着払いアイテム: ").text(ChatColor.WHITE + mailer.itemDesc(mail.getCostItem(), true));
                 content.text("\n");
             }
+        }
+
+        if (mail.getAttachmentsOriginal() != null && !mail.getAttachmentsOriginal().isEmpty() && mail.getFrom().equals(mailSender)) {
+            // 添付アイテムオリジナルがあり、表示先が送信者なら、元の添付アイテムを表示する。
+            content.text("\n");
+            content.text(ChatColor.RED).text("送信時の添付アイテム: ").text("\n");
+            mail.getAttachmentsOriginal().forEach(item ->
+                    content.text(ChatColor.WHITE + "  " + mailer.itemDesc(item, true) + "\n"));
         }
 
         ModalButtonForm b = ModalButtonForm.builder(owner)
