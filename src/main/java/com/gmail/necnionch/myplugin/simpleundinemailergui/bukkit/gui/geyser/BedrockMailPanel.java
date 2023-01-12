@@ -580,8 +580,8 @@ public class BedrockMailPanel {
         player.sendForm(b.build());
     }
 
-    private void openAttachmentInventory(Player player, MailData mail, @Nullable Runnable close) {
-        if (!Bukkit.dispatchCommand(player, "umail attach " + mail.getIndex()) || !MailPermission.ATTACH_INBOXMAIL.can(player) || !mailer.getMailer().getUndineConfig().isEnableAttachment())
+    private void openAttachmentInventory(MailData mail, @Nullable Runnable close) {
+        if (!Bukkit.dispatchCommand(bukkitPlayer, "umail attach " + mail.getIndex()) || !MailPermission.ATTACH_INBOXMAIL.can(bukkitPlayer) || !mailer.getMailer().getUndineConfig().isEnableAttachment())
             return;
         Bukkit.getPluginManager().registerEvents(new Listener() {
             @EventHandler(priority = EventPriority.LOWEST)
