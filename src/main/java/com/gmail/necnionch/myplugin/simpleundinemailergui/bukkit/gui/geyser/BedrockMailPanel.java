@@ -34,11 +34,13 @@ import java.util.stream.Collectors;
 public class BedrockMailPanel {
     private final JavaPlugin owner = JavaPlugin.getProvidingPlugin(MailGUIPlugin.class);
     private final FloodgatePlayer player;
+    private final Player bukkitPlayer;
     private final MailSender mailSender;
     private final MailWrapper mailer;
 
-    public BedrockMailPanel(FloodgatePlayer player, MailSender mailSender, @Nullable MainPanel.UIType ui) {
-        this.player = player;
+    public BedrockMailPanel(Player bukkitPlayer, FloodgatePlayer floodgatePlayer, MailSender mailSender, @Nullable MainPanel.UIType ui) {
+        this.player = floodgatePlayer;
+        this.bukkitPlayer = bukkitPlayer;
         this.mailSender = mailSender;
         this.mailer = MailGUIPlugin.getWrapper();
 
@@ -51,8 +53,12 @@ public class BedrockMailPanel {
         }
     }
 
-    public static BedrockMailPanel open(FloodgatePlayer player, MailSender mailSender, @Nullable MainPanel.UIType ui) {
-        return new BedrockMailPanel(player, mailSender, ui);
+    public static BedrockMailPanel open(Player bukkitPlayer, FloodgatePlayer floodgatePlayer, MailSender mailSender, @Nullable MainPanel.UIType ui) {
+        return new BedrockMailPanel(bukkitPlayer, floodgatePlayer, mailSender, ui);
+    }
+
+    public static BedrockMailPanel open(FloodgatePlayer floodgatePlayer, MailSender mailSender, @Nullable MainPanel.UIType ui) {
+        return new BedrockMailPanel(mailSender.getPlayer(), floodgatePlayer, mailSender, ui);
     }
 
     private Form createMainPanel() {
@@ -366,7 +372,7 @@ public class BedrockMailPanel {
                             .toString(),
                     () -> {
                         if (mailer.tryAcceptCostMoney(mailSender, mail)) {
-                            openAttachmentInventory(mailSender.getPlayer(), mail, null);
+                            openAttachmentInventory(bukkitPlayer, mail, null);
                         } else {
                             player.sendForm(SimpleButtonForm.builder(owner)
                                     .title(panelTitle)
@@ -378,7 +384,7 @@ public class BedrockMailPanel {
 
         } else if (mail.getCostItem() != null) {
             String costDesc = mailer.itemDesc(mail.getCostItem(), true);
-            boolean hasItem = mailer.checkCostItem(mailSender.getPlayer(), mailSender, mail);
+            boolean hasItem = mailer.checkCostItem(bukkitPlayer, mailSender, mail);
             b.button(StrGen.builder()
                             .text("商品を支払う\n")
                             .text(StrGen.builder()
@@ -386,8 +392,8 @@ public class BedrockMailPanel {
                                     .text("必要: " + ChatColor.BOLD + costDesc))
                             .toString(),
                             () -> {
-                                if (mailer.tryAcceptCostItem(mailSender.getPlayer(), mailSender, mail)) {
-                                    openAttachmentInventory(mailSender.getPlayer(), mail, null);
+                                if (mailer.tryAcceptCostItem(bukkitPlayer, mailSender, mail)) {
+                                    openAttachmentInventory(bukkitPlayer, mail, null);
                                 } else {
                                     player.sendForm(SimpleButtonForm.builder(owner)
                                             .title(panelTitle)
@@ -398,7 +404,7 @@ public class BedrockMailPanel {
                             });
 
         } else {
-            b.button("送付ボックスを開く", () -> openAttachmentInventory(mailSender.getPlayer(), mail, null));
+            b.button("送付ボックスを開く", () -> openAttachmentInventory(bukkitPlayer, mail, null));
             refuseButton = false;
         }
 
@@ -452,7 +458,7 @@ public class BedrockMailPanel {
 
         if (!mail.getAttachments().isEmpty()) {
             if (mail.isAttachmentsCancelled()) {
-                b.button("送付ボックスを開く", () -> openAttachmentInventory(mailSender.getPlayer(), mail, null));
+                b.button("送付ボックスを開く", () -> openAttachmentInventory(bukkitPlayer, mail, null));
             } else if (!mail.isAttachmentsOpened()) {
                 b.button("添付アイテムをキャンセルする", () -> {
                     SimpleButtonForm form = SimpleButtonForm.builder(owner).title(panelTitle);
@@ -465,7 +471,7 @@ public class BedrockMailPanel {
                     } else {
                         mail.cancelAttachments();
                         mailer.getMailManager().saveMail(mail);
-                        openAttachmentInventory(mailSender.getPlayer(), mail, null);
+                        openAttachmentInventory(bukkitPlayer, mail, null);
 
                         // 受信者側にメッセージを表示する
                         String message = Messages.get(
