@@ -7,7 +7,9 @@ public enum MailPermission {
     OUTBOX("outbox"),
     TRASH("trash"),
     READ("read"),
-    WRITE("write");
+    WRITE("write"),
+    ATTACH("attach"),
+    ATTACH_INBOXMAIL("attach-inboxmail");
 
     private final String node;
     public static final String NODE_PREFIX = "undine";

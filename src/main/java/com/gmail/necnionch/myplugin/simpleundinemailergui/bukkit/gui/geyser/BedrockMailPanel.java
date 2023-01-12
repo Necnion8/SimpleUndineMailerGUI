@@ -22,6 +22,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.permissions.Permissible;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.geysermc.cumulus.form.Form;
 import org.geysermc.cumulus.form.SimpleForm;
@@ -363,17 +364,29 @@ public class BedrockMailPanel {
         }
 
         boolean refuseButton = true;
-        if (mail.getCostMoney() > 0) {
+
+        if (!checkAttachInboxPermission(bukkitPlayer)) {
+            refuseButton = false;
+            b.content(ChatColor.RED + "送付ボックスを開く権限がありません");
+
+        } else if (mail.getCostMoney() > 0) {
             String costDesc = mailer.formatCostMoney(mail.getCostMoney());
             boolean hasMoney = mailer.checkCostMoney(mailSender, mail);
-            b.button(StrGen.builder()
+            b.button(
+                    StrGen.builder()
                             .text("お金を支払う\n")
                             .text(StrGen.builder()
                                     .text(hasMoney ? "" : ChatColor.DARK_RED.toString())
                                     .text("必要: " + ChatColor.BOLD + costDesc))
                             .toString(),
                     () -> {
-                        if (mailer.tryAcceptCostMoney(mailSender, mail)) {
+                        if (!checkAttachInboxPermission(bukkitPlayer)) {
+                            player.sendForm(SimpleButtonForm.builder(owner)
+                                    .title(panelTitle)
+                                    .content(ChatColor.RED + "送付ボックスを開く権限がありません")
+                                    .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)))
+                                    .build());
+                        } else if (mailer.tryAcceptCostMoney(mailSender, mail)) {
                             openAttachmentInventory(bukkitPlayer, mail, null);
                         } else {
                             player.sendForm(SimpleButtonForm.builder(owner)
@@ -387,26 +400,43 @@ public class BedrockMailPanel {
         } else if (mail.getCostItem() != null) {
             String costDesc = mailer.itemDesc(mail.getCostItem(), true);
             boolean hasItem = mailer.checkCostItem(bukkitPlayer, mailSender, mail);
-            b.button(StrGen.builder()
+            b.button(
+                    StrGen.builder()
                             .text("商品を支払う\n")
                             .text(StrGen.builder()
                                     .text(hasItem ? "" : ChatColor.DARK_RED.toString())
                                     .text("必要: " + ChatColor.BOLD + costDesc))
                             .toString(),
-                            () -> {
-                                if (mailer.tryAcceptCostItem(bukkitPlayer, mailSender, mail)) {
-                                    openAttachmentInventory(bukkitPlayer, mail, null);
-                                } else {
-                                    player.sendForm(SimpleButtonForm.builder(owner)
-                                            .title(panelTitle)
-                                            .content(ChatColor.RED + "必要なアイテムが足りません！\n" + ChatColor.WHITE + "要求: " + ChatColor.GOLD + ChatColor.BOLD + costDesc)
-                                            .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)))
-                                            .build());
-                                }
-                            });
+                    () -> {
+                        if (!checkAttachInboxPermission(bukkitPlayer)) {
+                            player.sendForm(SimpleButtonForm.builder(owner)
+                                    .title(panelTitle)
+                                    .content(ChatColor.RED + "送付ボックスを開く権限がありません")
+                                    .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)))
+                                    .build());
+                        } else if (mailer.tryAcceptCostItem(bukkitPlayer, mailSender, mail)) {
+                            openAttachmentInventory(bukkitPlayer, mail, null);
+                        } else {
+                            player.sendForm(SimpleButtonForm.builder(owner)
+                                    .title(panelTitle)
+                                    .content(ChatColor.RED + "必要なアイテムが足りません！\n" + ChatColor.WHITE + "要求: " + ChatColor.GOLD + ChatColor.BOLD + costDesc)
+                                    .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)))
+                                    .build());
+                        }
+                    });
 
         } else {
-            b.button("送付ボックスを開く", () -> openAttachmentInventory(bukkitPlayer, mail, null));
+            b.button("送付ボックスを開く", () -> {
+                if (!checkAttachInboxPermission(bukkitPlayer)) {
+                    player.sendForm(SimpleButtonForm.builder(owner)
+                            .title(panelTitle)
+                            .content(ChatColor.RED + "送付ボックスを開く権限がありません")
+                            .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)))
+                            .build());
+                } else {
+                    openAttachmentInventory(bukkitPlayer, mail, null);
+                }
+            });
             refuseButton = false;
         }
 
@@ -460,37 +490,61 @@ public class BedrockMailPanel {
 
         if (!mail.getAttachments().isEmpty()) {
             if (mail.isAttachmentsCancelled()) {
-                b.button("送付ボックスを開く", () -> openAttachmentInventory(bukkitPlayer, mail, null));
+                if (!checkAttachInboxPermission(bukkitPlayer)) {
+                    b.content(ChatColor.RED + "送付ボックスを開く権限がありません");
+                } else {
+                    b.button("送付ボックスを開く", () -> {
+                        if (!checkAttachInboxPermission(bukkitPlayer)) {
+                            player.sendForm(SimpleButtonForm.builder(owner)
+                                    .title(panelTitle)
+                                    .content(ChatColor.RED + "送付ボックスを開く権限がありません")
+                                    .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)))
+                                    .build());
+                        } else {
+                            openAttachmentInventory(bukkitPlayer, mail, null);
+                        }
+                    });
+                }
+
             } else if (!mail.isAttachmentsOpened()) {
-                b.button("添付アイテムをキャンセルする", () -> {
-                    SimpleButtonForm form = SimpleButtonForm.builder(owner).title(panelTitle);
-                    if (mail.isAttachmentsCancelled()) {
-                        form.content(ChatColor.RED + "既に添付アイテムはキャンセルされています");
-                        form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
-                    } else if (mail.isAttachmentsOpened()) {
-                        form.content(ChatColor.RED + "既に受信者がボックスを開いたため、キャンセルできません");
-                        form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
-                    } else {
-                        mail.cancelAttachments();
-                        mailer.getMailManager().saveMail(mail);
-                        openAttachmentInventory(bukkitPlayer, mail, null);
+                if (!checkAttachInboxPermission(bukkitPlayer)) {
+                    b.content(ChatColor.RED + "送付ボックスを開く権限がありません");
+                } else {
+                    b.button("添付アイテムをキャンセルする", () -> {
+                        SimpleButtonForm form = SimpleButtonForm.builder(owner).title(panelTitle);
+                        if (mail.isAttachmentsCancelled()) {
+                            form.content(ChatColor.RED + "既に添付アイテムはキャンセルされています");
+                            form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                        } else if (mail.isAttachmentsOpened()) {
+                            form.content(ChatColor.RED + "既に受信者がボックスを開いたため、キャンセルできません");
+                            form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                        } else if (!checkAttachInboxPermission(bukkitPlayer)) {
+                            player.sendForm(SimpleButtonForm.builder(owner)
+                                    .title(panelTitle)
+                                    .content(ChatColor.RED + "送付ボックスを開く権限がありません")
+                                    .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)))
+                                    .build());
+                        } else {
+                            mail.cancelAttachments();
+                            mailer.getMailManager().saveMail(mail);
+                            openAttachmentInventory(bukkitPlayer, mail, null);
 
-                        // 受信者側にメッセージを表示する
-                        String message = Messages.get(
-                                "InformationAttachWasCanceledBySender",
-                                new String[]{"%num", "%sender"},
-                                new String[]{mail.getIndex() + "", player.getUsername()});
-                        mail.getToTotal().stream()
-                                .filter(MailSender::isOnline)
-                                .forEach(to -> to.sendMessage(message));
-                        return;
-                    }
-                    player.sendForm(form.build());
-                });
+                            // 受信者側にメッセージを表示する
+                            String message = Messages.get(
+                                    "InformationAttachWasCanceledBySender",
+                                    new String[]{"%num", "%sender"},
+                                    new String[]{mail.getIndex() + "", player.getUsername()});
+                            mail.getToTotal().stream()
+                                    .filter(MailSender::isOnline)
+                                    .forEach(to -> to.sendMessage(message));
+                            return;
+                        }
+                        player.sendForm(form.build());
+                    });
+                }
             }
-        }
 
-        if (mail.getAttachments().isEmpty()) {
+        } else {
             b.button("ゴミ箱に移動する", () -> {
                 SimpleButtonForm form = SimpleButtonForm.builder(owner)
                         .title(panelTitle);
@@ -517,7 +571,8 @@ public class BedrockMailPanel {
     }
 
     private void openAttachmentInventory(Player player, MailData mail, @Nullable Runnable close) {
-        Bukkit.dispatchCommand(player, "umail attach " + mail.getIndex());
+        if (!Bukkit.dispatchCommand(player, "umail attach " + mail.getIndex()) || !MailPermission.ATTACH_INBOXMAIL.can(player) || !mailer.getMailer().getUndineConfig().isEnableAttachment())
+            return;
         Bukkit.getPluginManager().registerEvents(new Listener() {
             @EventHandler(priority = EventPriority.LOWEST)
             public void onClose(InventoryCloseEvent event) {
@@ -531,6 +586,8 @@ public class BedrockMailPanel {
         }, owner);
     }
 
-
+    private boolean checkAttachInboxPermission(Permissible permissible) {
+        return mailer.getMailer().getUndineConfig().isEnableAttachment() && MailPermission.ATTACH.can(permissible) && MailPermission.ATTACH_INBOXMAIL.can(permissible);
+    }
 
 }
