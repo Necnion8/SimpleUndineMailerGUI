@@ -2,18 +2,21 @@ package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui;
 
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.MailGUIPlugin;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.ui.*;
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.MailPermission;
 import com.google.common.collect.ImmutableMap;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.permissions.Permissible;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class MainPanel extends Panel {
-
+    public static final UIType DEFAULT_UI = UIType.INBOX;
     private final NewMailUI newMail;
     private final InboxUI inbox;
     private final OutboxUI outbox;
@@ -22,7 +25,7 @@ public class MainPanel extends Panel {
     private MailUI currentUI;
 
     public MainPanel(Player player) {
-        this(player, UIType.INBOX);
+        this(player, DEFAULT_UI);
     }
 
     public MainPanel(Player player, UIType type) {
@@ -47,8 +50,10 @@ public class MainPanel extends Panel {
                 this.currentUI = trashBox;
                 break;
             case INBOX:
-            default:
                 this.currentUI = inbox;
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown UIType: " + type.name());
         }
     }
 
@@ -120,21 +125,32 @@ public class MainPanel extends Panel {
             .collect(Collectors.toMap(UIType::getCommandName, t -> t)));
 
     public enum UIType {
-        NEW_MAIL("write"),
-        INBOX("inbox"),
-        OUTBOX("outbox"),
-        TRASH_BOX("trash"),
-        GROUPS("group");
+        NEW_MAIL("write", MailPermission.WRITE),
+        INBOX("inbox", MailPermission.INBOX),
+        OUTBOX("outbox", MailPermission.OUTBOX),
+        TRASH_BOX("trash", MailPermission.TRASH),
+        GROUPS("group", null);
 
         private final String commandName;
+        private final MailPermission permission;
 
-        UIType(String commandName) {
+        UIType(String commandName, @Nullable MailPermission permission) {
             this.commandName = commandName;
+            this.permission = permission;
         }
 
         public String getCommandName() {
             return commandName;
         }
+
+        public @Nullable MailPermission getPermission() {
+            return permission;
+        }
+
+        public boolean can(Permissible permissible) {
+            return permission == null || permission.can(permissible);
+        }
+
     }
 
 }

@@ -3,6 +3,8 @@ package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.commands;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.MailGUIPlugin;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.MainPanel;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.geyser.BedrockMailPanel;
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.MailPermission;
+import net.md_5.bungee.api.ChatColor;
 import org.bitbucket.ucchy.undine.sender.MailSender;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -37,10 +39,13 @@ public class GUICommand implements TabExecutor {
                 return true;
             }
 
-            if (ui != null) {
+            if (ui == null)
+                ui = MainPanel.DEFAULT_UI;
+
+            if (ui.can(sender) && MailPermission.READ.can(sender)) {
                 new MainPanel(player, ui).open();
             } else {
-                new MainPanel(player).open();
+                sender.sendMessage(ChatColor.RED + "メールを見る権限がありません");
             }
         }
         return true;
@@ -50,6 +55,7 @@ public class GUICommand implements TabExecutor {
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String[] args) {
         if (args.length == 1) {
             return Stream.of(MainPanel.UIType.values())
+                    .filter(type -> type.can(sender))
                     .map(MainPanel.UIType::getCommandName)
                     .filter(s -> args[0].regionMatches(true, 0, s, 0, args[0].length()))
                     .collect(Collectors.toList());

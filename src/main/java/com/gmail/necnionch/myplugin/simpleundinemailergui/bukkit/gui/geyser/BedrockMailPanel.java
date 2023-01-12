@@ -3,6 +3,7 @@ package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.geyser;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.MailGUIPlugin;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.MainPanel;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.hooks.MailWrapper;
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.MailPermission;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.ModalButtonForm;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.SimpleButtonForm;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.StrGen;
@@ -45,12 +46,22 @@ public class BedrockMailPanel {
         this.mailer = MailGUIPlugin.getWrapper();
 
         if (MainPanel.UIType.INBOX.equals(ui)) {
-            player.sendForm(createInboxPanel());
+            if (MailPermission.INBOX.can(bukkitPlayer)) {
+                player.sendForm(createInboxPanel());
+                return;
+            }
+        } else if (MainPanel.UIType.OUTBOX.equals(ui)) {
+            if (MailPermission.OUTBOX.can(bukkitPlayer)) {
+                player.sendForm(createOutboxPanel());
+                return;
+            }
         } else if (MainPanel.UIType.TRASH_BOX.equals(ui)) {
-            player.sendForm(createTrashPanel());
-        } else {
-            player.sendForm(createMainPanel());
+            if (MailPermission.TRASH.can(bukkitPlayer)) {
+                player.sendForm(createTrashPanel());
+                return;
+            }
         }
+        player.sendForm(createMainPanel());
     }
 
     public static BedrockMailPanel open(Player bukkitPlayer, FloodgatePlayer floodgatePlayer, MailSender mailSender, @Nullable MainPanel.UIType ui) {
@@ -70,19 +81,38 @@ public class BedrockMailPanel {
                 .filter(mail -> !mail.isRead(mailSender))
                 .count();
 
-        return SimpleButtonForm.builder(owner)
-                .title("メールメニュー")
-                .button(StrGen.builder()
+        SimpleButtonForm form = SimpleButtonForm.builder(owner).title("メールメニュー");
+        boolean activePermission = false;
+
+        if (MailPermission.READ.can(bukkitPlayer)) {
+            if (MailPermission.INBOX.can(bukkitPlayer)) {
+                form.button(
+                        StrGen.builder()
                                 .text("受信箱 (" + inMails.size() + ")")
                                 .text(StrGen.builder(() -> unread > 0)
                                         .text(ChatColor.DARK_RED).text(ChatColor.BOLD).text("\n(未読 " + unread + "通)"))
                                 .toString(),
-                        () -> player.sendForm(createInboxPanel()))
-                .button("送信箱 (" + outMails.size() + ")",
-                        () -> player.sendForm(createOutboxPanel()))
-                .button("ゴミ箱 (" + trashMails.size() + ")",
-                        () -> player.sendForm(createTrashPanel()))
-                .build();
+                        () -> player.sendForm(createInboxPanel()));
+                activePermission = true;
+            }
+
+            if (MailPermission.OUTBOX.can(bukkitPlayer)) {
+                form.button("送信箱 (" + outMails.size() + ")",
+                        () -> player.sendForm(createOutboxPanel()));
+                activePermission = true;
+            }
+
+            if (MailPermission.TRASH.can(bukkitPlayer)) {
+                form.button("ゴミ箱 (" + trashMails.size() + ")",
+                        () -> player.sendForm(createTrashPanel()));
+                activePermission = true;
+            }
+        }
+
+        if (!activePermission)
+            form.content(ChatColor.RED + "メールを見る権限がありません");
+
+        return form.build();
     }
 
     private Form createInboxPanel() {
@@ -201,13 +231,25 @@ public class BedrockMailPanel {
                 .content(content.toString());
 
         if (mailer.getMailManager().getTrashboxMails(mailSender).contains(mail)) {
-            b.button1("ゴミ箱に戻る", () -> player.sendForm(createTrashPanel()));
+            if (MailPermission.TRASH.can(bukkitPlayer)) {
+                b.button1("ゴミ箱に戻る", () -> player.sendForm(createTrashPanel()));
+            } else {
+                b.button1("メニューに戻る", () -> player.sendForm(createMainPanel()));
+            }
             b.button2("メール操作", () -> player.sendForm(createTrashActionPanel(mail)));
         } else if (mailer.getMailManager().getOutboxMails(mailSender).contains(mail)) {
-            b.button1("送信箱に戻る", () -> player.sendForm(createOutboxPanel()));
+            if (MailPermission.OUTBOX.can(bukkitPlayer)) {
+                b.button1("送信箱に戻る", () -> player.sendForm(createOutboxPanel()));
+            } else {
+                b.button1("メニューに戻る", () -> player.sendForm(createMainPanel()));
+            }
             b.button2("メール操作", () -> player.sendForm(createOutboxActionPanel(mail)));
         } else {
-            b.button1("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
+            if (MailPermission.INBOX.can(bukkitPlayer)) {
+                b.button1("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
+            } else {
+                b.button1("メニューに戻る", () -> player.sendForm(createMainPanel()));
+            }
             b.button2("メール操作", () -> player.sendForm(createInboxActionPanel(mail)));
         }
 
@@ -261,11 +303,15 @@ public class BedrockMailPanel {
                 mailer.getMailManager().saveMail(mail);
                 form.content("ゴミ箱から戻しました");
                 form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
-                if (mailer.getMailManager().getInboxMails(mailSender).contains(mail))
+                if (mailer.getMailManager().getInboxMails(mailSender).contains(mail) && MailPermission.INBOX.can(bukkitPlayer))
                     form.button("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
-                if (mailer.getMailManager().getOutboxMails(mailSender).contains(mail))
+                if (mailer.getMailManager().getOutboxMails(mailSender).contains(mail) && MailPermission.OUTBOX.can(bukkitPlayer))
                     form.button("送信箱に戻る", () -> player.sendForm(createOutboxPanel()));
-                form.button("ゴミ箱に戻る", () -> player.sendForm(createTrashPanel()));
+                if (MailPermission.TRASH.can(bukkitPlayer)) {
+                    form.button("ゴミ箱に戻る", () -> player.sendForm(createTrashPanel()));
+                } else {
+                    form.button("メニューに戻る", () -> player.sendForm(createMainPanel()));
+                }
             }
             player.sendForm(form.build());
         });
@@ -295,8 +341,10 @@ public class BedrockMailPanel {
                 } else {
                     form.content("ゴミ箱に移動しました");
                     form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
-                    form.button("ゴミ箱に戻る", () -> player.sendForm(createTrashPanel()));
-                    form.button("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
+                    if (MailPermission.TRASH.can(bukkitPlayer))
+                        form.button("ゴミ箱に戻る", () -> player.sendForm(createTrashPanel()));
+                    if (MailPermission.INBOX.can(bukkitPlayer))
+                        form.button("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
                     mail.setTrashFlag(mailSender);
                     mailer.getMailManager().saveMail(mail);
                 }
@@ -455,8 +503,10 @@ public class BedrockMailPanel {
                 } else {
                     form.content("ゴミ箱に移動しました");
                     form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
-                    form.button("ゴミ箱に戻る", () -> player.sendForm(createTrashPanel()));
-                    form.button("送信箱に戻る", () -> player.sendForm(createOutboxPanel()));
+                    if (MailPermission.TRASH.can(bukkitPlayer))
+                        form.button("ゴミ箱に戻る", () -> player.sendForm(createTrashPanel()));
+                    if (MailPermission.OUTBOX.can(bukkitPlayer))
+                        form.button("送信箱に戻る", () -> player.sendForm(createOutboxPanel()));
                     mail.setTrashFlag(mailSender);
                     mailer.getMailManager().saveMail(mail);
                 }
