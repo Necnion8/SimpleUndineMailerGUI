@@ -1,18 +1,18 @@
 package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.hooks;
 
+import com.google.common.collect.Lists;
 import org.bitbucket.ucchy.undine.*;
 import org.bitbucket.ucchy.undine.bridge.VaultEcoBridge;
 import org.bitbucket.ucchy.undine.sender.MailSender;
+import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -231,5 +231,103 @@ public class MailWrapper {
         mailer.getMailManager().saveMail(mail);
         return true;
     }
+
+    public List<MailData> setReadFlagMails(MailSender mailSender) {
+        if (!available())
+            return Collections.emptyList();
+
+        List<MailData> mails = mailer.getMailManager().getInboxMails(mailSender).stream()
+                .filter(mail -> !mail.isRead(mailSender) && (mail.getAttachments().isEmpty() || mail.isAttachmentsCancelled()))
+                .collect(Collectors.toList());
+
+        mails.forEach(mail -> {
+            mail.setReadFlag(mailSender);
+            mailer.getMailManager().saveMail(mail);
+        });
+
+        return mails;
+    }
+
+    public List<MailData> setTrashFlagMails(MailSender mailSender) {
+        if (!available())
+            return Collections.emptyList();
+
+        List<MailData> mails = mailer.getMailManager().getInboxMails(mailSender).stream()
+                .filter((mail) -> mail.getAttachments().isEmpty())
+                .collect(Collectors.toList());
+
+        mails.forEach(mail -> {
+            mail.setTrashFlag(mailSender);
+            mailer.getMailManager().saveMail(mail);
+        });
+
+        return mails;
+    }
+
+    public TakeAttachmentsResult takeAllMailAttachments(MailSender mailSender, Player player) {
+        if (!available())
+           return new TakeAttachmentsResult(Collections.emptyList(), Collections.emptyList());
+
+        List<MailData> mails = mailer.getMailManager().getInboxMails(mailSender).stream()
+                .filter((mail) -> !mail.getAttachments().isEmpty() && !mail.isAttachmentsCancelled() && mail.getCostItem() == null && mail.getCostMoney() <= 0)
+                .collect(Collectors.toList());
+        List<MailData> fails = Lists.newArrayList();
+
+        PlayerInventory inv = player.getInventory();
+        for (MailData mail : mails) {
+            boolean changed = false;
+            for (ItemStack is : Lists.newArrayList(mail.getAttachments())) {
+                Map<Integer, ItemStack> result = inv.addItem(is);
+                if (result.isEmpty()) {
+                    changed = true;
+                    is.setAmount(0);
+                } else {
+                    for (ItemStack is2 : result.values()) {
+                        if (is.getAmount() != is2.getAmount()) {
+                            changed = true;
+                            is.setAmount(is.getAmount() - is2.getAmount());
+                        } else {
+                            fails.add(mail);
+                        }
+                    }
+                }
+            }
+            if (changed) {
+                mail.setOpenAttachments();
+                // sort
+                Inventory fakeInv = Bukkit.createInventory(null, 54);
+                mail.getAttachments().forEach(fakeInv::addItem);
+                mail.setAttachments(Lists.newArrayList(fakeInv.getContents()));
+                mailer.getMailManager().saveMail(mail);
+            }
+        }
+
+        return new TakeAttachmentsResult(
+                Collections.unmodifiableList(mails),
+                Collections.unmodifiableList(fails)
+        );
+    }
+
+
+    public static final class TakeAttachmentsResult {
+
+        private final List<MailData> allMails;
+        private final List<MailData> fails;
+
+        public TakeAttachmentsResult(List<MailData> allMails, List<MailData> fails) {
+            this.allMails = allMails;
+            this.fails = fails;
+        }
+
+        public List<MailData> getAll() {
+            return allMails;
+        }
+
+        public List<MailData> getFails() {
+            return fails;
+        }
+
+    }
+
 
 }

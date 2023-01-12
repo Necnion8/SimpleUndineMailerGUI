@@ -24,11 +24,11 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.permissions.Permissible;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.geysermc.cumulus.form.SimpleForm;
 import org.geysermc.floodgate.api.player.FloodgatePlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -144,7 +144,87 @@ public class BedrockMailPanel {
     }
 
     private void openInboxManagePanel() {
-        player.sendForm(SimpleForm.builder().build());
+        if (checkMailerLoadingWithPrompt(this::openInboxManagePanel))
+            return;
+
+        Function<MailData, Boolean> isRead = (mail) -> !mail.isRead(mailSender) && (mail.getAttachments().isEmpty() || mail.isAttachmentsCancelled());
+        Function<MailData, Boolean> isTrash = (mail) -> mail.getAttachments().isEmpty();
+        Function<MailData, Boolean> isAttach = (mail) -> !mail.getAttachments().isEmpty() && !mail.isAttachmentsCancelled() && mail.getCostItem() == null && mail.getCostMoney() <= 0;
+
+        int readMails = 0;
+        int trashMails = 0;
+        int attachItems = 0;
+
+        for (MailData mail : mailer.getMailManager().getInboxMails(mailSender)) {
+            if (isRead.apply(mail))
+                readMails++;
+            if (isTrash.apply(mail))
+                trashMails++;
+            if (isAttach.apply(mail))
+                attachItems += mail.getAttachments().size();
+        }
+
+        SimpleButtonForm b = SimpleButtonForm.builder(owner).title("受信メール管理");
+        b.button("受信メールを全て既読にする\n未読メール: " + readMails + "通", () -> {
+            if (checkMailerLoadingWithPrompt(this::openInboxManagePanel))
+                return;
+
+            int mails = mailer.setReadFlagMails(mailSender).size();
+            player.sendForm(SimpleButtonForm.builder(owner)
+                    .title("受信メール管理")
+                    .content("受信メール " + mails + "通 を既読にしました")
+                    .button("メール管理", this::openInboxManagePanel)
+                    .build());
+        });
+
+        if (MailPermission.TRASH.can(bukkitPlayer)) {
+            b.button("既読メールを全てゴミ箱に移動する\n既読メール: " + trashMails + "通", () -> {
+                if (checkMailerLoadingWithPrompt(this::openInboxManagePanel))
+                    return;
+
+                SimpleButtonForm form = SimpleButtonForm.builder(owner).title("受信メール管理");
+
+                if (!MailPermission.TRASH.can(bukkitPlayer)) {
+                    form.content(ChatColor.RED + "ゴミ箱に移動する権限がありません");
+                    form.button("メール管理", this::openInboxManagePanel);
+                    return;
+                }
+
+                int mails = mailer.setTrashFlagMails(mailSender).size();
+                form.content("既読メール " + mails + "通 をゴミ箱に移動しました");
+                form.button("メール管理", this::openInboxManagePanel);
+                player.sendForm(form.build());
+            });
+        }
+
+        if (checkAttachInboxPermission(bukkitPlayer)) {
+            b.button("添付アイテムを全て受け取る\n添付アイテム: " + attachItems + "個", () -> {
+                if (checkMailerLoadingWithPrompt(this::openInboxManagePanel))
+                    return;
+
+                SimpleButtonForm form = SimpleButtonForm.builder(owner).title("受信メール管理");
+
+                if (!checkAttachInboxPermission(bukkitPlayer)) {
+                    form.content(ChatColor.RED + "送付ボックスを開く権限がありません");
+                    form.button("メール管理", this::openInboxManagePanel);
+                }
+
+                MailWrapper.TakeAttachmentsResult result = mailer.takeAllMailAttachments(mailSender, bukkitPlayer);
+                int total = result.getAll().size();
+                int fail = result.getFails().size();
+
+                if (fail <= 0) {
+                    form.content("送付されたアイテムを全て受け取りました");
+                } else if (total == fail) {
+                    form.content(ChatColor.RED + "手持ちに空きがありません");
+                } else {
+                    form.content("送付されたアイテムを受け取りました\n" + ChatColor.YELLOW + "手持ちが一杯になったため、" + fail + "通のメールを開けませんでした");
+                }
+                form.button("メール管理", this::openInboxManagePanel);
+                player.sendForm(form.build());
+            });
+        }
+        player.sendForm(b.build());
     }
 
     private void openOutboxPanel() {
