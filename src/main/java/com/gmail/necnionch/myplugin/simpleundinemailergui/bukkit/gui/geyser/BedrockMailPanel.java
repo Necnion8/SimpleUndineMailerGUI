@@ -95,22 +95,6 @@ public class BedrockMailPanel {
 
         for (MailData mail : mails) {
             boolean unread = !mail.isRead(mailSender);
-
-            String content;
-            if (mail.getMessage().stream().anyMatch(((Predicate<String>) String::isEmpty).negate())) {
-                content = mail.getMessage().get(0);
-            } else if (mail.isAttachmentsRefused()) {
-                content = "受信者により添付が受取拒否されました";
-            } else if (mail.isAttachmentsCancelled()) {
-                content = "送信者により添付がキャンセルされました";
-            } else if (!mail.getAttachments().isEmpty()) {
-                content = mailer.itemDesc(mail.getAttachments().get(0), true);
-                if (mail.getAttachments().size() > 1)
-                    content += " ...他 " + (mail.getAttachments().size() - 1) + "個";
-            } else {
-                content = "";
-            }
-
             b.button(StrGen.builder()
                     .join(() -> unread, ChatColor.DARK_RED + "***  ")
                     .text("#" + mail.getIndex())
@@ -119,7 +103,7 @@ public class BedrockMailPanel {
                     .join(() -> unread, "  ***")
                     .text("\n")
                     .text(mail.getFrom().getName())
-                    .text(" : ").text(content)
+                    .text(" : ").text(mailer.formatContentSummary(mail))
                     .toString(),
                     () -> player.sendForm(createViewPanel(mail)));
         }
@@ -139,28 +123,13 @@ public class BedrockMailPanel {
                 .button("メール管理", () -> player.sendForm(createOutboxManagePanel()));
 
         for (MailData mail : mails) {
-            String content;
-            if (mail.getMessage().stream().anyMatch(((Predicate<String>) String::isEmpty).negate())) {
-                content = mail.getMessage().get(0);
-            } else if (mail.isAttachmentsRefused()) {
-                content = "受信者により添付が受取拒否されました";
-            } else if (mail.isAttachmentsCancelled()) {
-                content = "送信者により添付がキャンセルされました";
-            } else if (!mail.getAttachments().isEmpty()) {
-                content = mailer.itemDesc(mail.getAttachments().get(0), true);
-                if (mail.getAttachments().size() > 1)
-                    content += " ...他 " + (mail.getAttachments().size() - 1) + "個";
-            } else {
-                content = "";
-            }
-
             b.button(StrGen.builder()
                             .text("#" + mail.getIndex())
                             .text("  送信日時: " + mailer.formatDateOrReadable(mail.getDate()))
                             .join(() -> !mail.getAttachments().isEmpty(), "  (送付: " + mail.getAttachments().size() + ")")
                             .text("\n")
                             .text(mail.getFrom().getName())
-                            .text(" : ").text(content)
+                            .text(" : ").text(mailer.formatContentSummary(mail))
                             .toString(),
                     () -> player.sendForm(createViewPanel(mail)));
         }
@@ -258,27 +227,12 @@ public class BedrockMailPanel {
                 .button("メール管理", () -> player.sendForm(createTrashPanel()));
 
         for (MailData mail : mails) {
-            String content;
-            if (mail.getMessage().stream().anyMatch(((Predicate<String>) String::isEmpty).negate())) {
-                content = mail.getMessage().get(0);
-            } else if (mail.isAttachmentsRefused()) {
-                content = "受信者により添付が受取拒否されました";
-            } else if (mail.isAttachmentsCancelled()) {
-                content = "送信者により添付がキャンセルされました";
-            } else if (!mail.getAttachments().isEmpty()) {
-                content = mailer.itemDesc(mail.getAttachments().get(0), true);
-                if (mail.getAttachments().size() > 1)
-                    content += " ...他 " + (mail.getAttachments().size() - 1) + "個";
-            } else {
-                content = "";
-            }
-
             b.button(StrGen.builder()
                     .text("#" + mail.getIndex())
                     .text("  送信日時: " + mailer.formatDateOrReadable(mail.getDate()))
                     .text("\n")
                     .text(mail.getFrom().getName())
-                    .text(" : ").text(content)
+                    .text(" : ").text(mailer.formatContentSummary(mail))
                     .toString(),
                     () -> player.sendForm(createViewPanel(mail))
             );

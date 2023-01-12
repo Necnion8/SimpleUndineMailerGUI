@@ -13,6 +13,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class MailWrapper {
@@ -68,6 +69,24 @@ public class MailWrapper {
                 return days + "日前";
         }
         return (new SimpleDateFormat(Messages.get("DateFormat"))).format(date);
+    }
+
+    public String formatContentSummary(MailData mail) {
+        String content;
+        if (mail.getMessage().stream().anyMatch(((Predicate<String>) String::isEmpty).negate())) {
+            content = mail.getMessage().get(0);
+        } else if (mail.isAttachmentsRefused()) {
+            content = "受信者により添付が受取拒否されました";
+        } else if (mail.isAttachmentsCancelled()) {
+            content = "送信者により添付がキャンセルされました";
+        } else if (!mail.getAttachments().isEmpty()) {
+            content = itemDesc(mail.getAttachments().get(0), true);
+            if (mail.getAttachments().size() > 1)
+                content += " ...他 " + (mail.getAttachments().size() - 1) + "個";
+        } else {
+            content = "";
+        }
+        return content;
     }
 
     public String joinToAndGroup(MailData mail) {
