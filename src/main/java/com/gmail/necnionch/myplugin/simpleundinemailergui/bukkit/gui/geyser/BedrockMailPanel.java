@@ -329,11 +329,14 @@ public class BedrockMailPanel {
         if (mail.isEditmode() || !mail.isRecipient(mailSender) || !mailer.getMailManager().getInboxMails(mailSender).contains(mail))
             return b.build();
 
-        if (mail.getAttachments().isEmpty()) {
+        if (mail.getAttachments().isEmpty() && MailPermission.TRASH.can(bukkitPlayer)) {
             b.button("ゴミ箱に移動する", () -> {
                 SimpleButtonForm form = SimpleButtonForm.builder(owner)
                         .title(panelTitle);
-                if (!mail.isRelatedWith(mailSender)) {
+                if (!MailPermission.TRASH.can(bukkitPlayer)) {
+                    form.content(ChatColor.RED + "ゴミ箱に移動する権限がありません");
+                    form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                } else if (!mail.isRelatedWith(mailSender)) {
                     form.content(ChatColor.RED + "指定されたメールはあなた宛ではないので表示できません");
                     form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
                 } else if (!mail.isRead(mailSender)) {
@@ -544,11 +547,14 @@ public class BedrockMailPanel {
                 }
             }
 
-        } else {
+        } else if (MailPermission.TRASH.can(bukkitPlayer)) {
             b.button("ゴミ箱に移動する", () -> {
                 SimpleButtonForm form = SimpleButtonForm.builder(owner)
                         .title(panelTitle);
-                if (!mail.isRelatedWith(mailSender)) {
+                if (!MailPermission.TRASH.can(bukkitPlayer)) {
+                    form.content(ChatColor.RED + "ゴミ箱に移動する権限がありません");
+                    form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                } else if (!mail.isRelatedWith(mailSender)) {
                     form.content(ChatColor.RED + "指定されたメールはあなた宛ではないので表示できません");
                     form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
                 } else if (!mail.isRead(mailSender)) {
