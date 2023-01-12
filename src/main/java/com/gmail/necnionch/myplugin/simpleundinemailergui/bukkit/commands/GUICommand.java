@@ -5,6 +5,7 @@ import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.MainPanel;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.geyser.BedrockMailPanel;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.MailPermission;
 import net.md_5.bungee.api.ChatColor;
+import org.bitbucket.ucchy.undine.Messages;
 import org.bitbucket.ucchy.undine.sender.MailSender;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -30,6 +31,11 @@ public class GUICommand implements TabExecutor {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
         if (sender instanceof Player) {
+            if (!MailGUIPlugin.getWrapper().available()) {
+                sender.sendMessage(Messages.get("ErrorCannotListInitializingYet"));
+                return true;
+            }
+
             MainPanel.UIType ui = null;
             if (args.length >= 1)
                 ui = MainPanel.UITypeNames.get(args[0].toLowerCase(Locale.ROOT));

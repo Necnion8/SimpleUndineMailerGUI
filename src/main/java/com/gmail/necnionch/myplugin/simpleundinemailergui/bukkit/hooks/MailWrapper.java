@@ -35,7 +35,7 @@ public class MailWrapper {
     }
 
     public boolean available() {
-        return mailer.getMailManager().isLoaded();
+        return mailer.isEnabled() && mailer.getMailManager().isLoaded();
     }
 
     public String summarySubstring(String line) {
