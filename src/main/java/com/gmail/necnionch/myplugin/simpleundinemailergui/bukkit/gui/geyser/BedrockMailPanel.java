@@ -24,7 +24,6 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.permissions.Permissible;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.geysermc.cumulus.form.Form;
 import org.geysermc.cumulus.form.SimpleForm;
 import org.geysermc.floodgate.api.player.FloodgatePlayer;
 import org.jetbrains.annotations.Nullable;
@@ -48,21 +47,21 @@ public class BedrockMailPanel {
 
         if (MainPanel.UIType.INBOX.equals(ui)) {
             if (MailPermission.INBOX.can(bukkitPlayer)) {
-                player.sendForm(createInboxPanel());
+                openInboxPanel();
                 return;
             }
         } else if (MainPanel.UIType.OUTBOX.equals(ui)) {
             if (MailPermission.OUTBOX.can(bukkitPlayer)) {
-                player.sendForm(createOutboxPanel());
+                openOutboxPanel();
                 return;
             }
         } else if (MainPanel.UIType.TRASH_BOX.equals(ui)) {
             if (MailPermission.TRASH.can(bukkitPlayer)) {
-                player.sendForm(createTrashPanel());
+                openTrashPanel();
                 return;
             }
         }
-        player.sendForm(createMainPanel());
+        openMainPanel();
     }
 
     public static BedrockMailPanel open(Player bukkitPlayer, FloodgatePlayer floodgatePlayer, MailSender mailSender, @Nullable MainPanel.UIType ui) {
@@ -73,7 +72,7 @@ public class BedrockMailPanel {
         return new BedrockMailPanel(mailSender.getPlayer(), floodgatePlayer, mailSender, ui);
     }
 
-    private Form createMainPanel() {
+    private void openMainPanel() {
         List<MailData> inMails = mailer.getMailManager().getInboxMails(mailSender);
         List<MailData> outMails = mailer.getMailManager().getOutboxMails(mailSender);
         List<MailData> trashMails = mailer.getMailManager().getTrashboxMails(mailSender);
@@ -87,25 +86,21 @@ public class BedrockMailPanel {
 
         if (MailPermission.READ.can(bukkitPlayer)) {
             if (MailPermission.INBOX.can(bukkitPlayer)) {
-                form.button(
-                        StrGen.builder()
-                                .text("受信箱 (" + inMails.size() + ")")
-                                .text(StrGen.builder(() -> unread > 0)
-                                        .text(ChatColor.DARK_RED).text(ChatColor.BOLD).text("\n(未読 " + unread + "通)"))
-                                .toString(),
-                        () -> player.sendForm(createInboxPanel()));
+                form.button(StrGen.builder()
+                        .text("受信箱 (" + inMails.size() + ")")
+                        .text(StrGen.builder(() -> unread > 0)
+                                .text(ChatColor.DARK_RED).text(ChatColor.BOLD).text("\n(未読 " + unread + "通)"))
+                        .toString(), this::openInboxPanel);
                 activePermission = true;
             }
 
             if (MailPermission.OUTBOX.can(bukkitPlayer)) {
-                form.button("送信箱 (" + outMails.size() + ")",
-                        () -> player.sendForm(createOutboxPanel()));
+                form.button("送信箱 (" + outMails.size() + ")", this::openOutboxPanel);
                 activePermission = true;
             }
 
             if (MailPermission.TRASH.can(bukkitPlayer)) {
-                form.button("ゴミ箱 (" + trashMails.size() + ")",
-                        () -> player.sendForm(createTrashPanel()));
+                form.button("ゴミ箱 (" + trashMails.size() + ")", this::openTrashPanel);
                 activePermission = true;
             }
         }
@@ -113,16 +108,16 @@ public class BedrockMailPanel {
         if (!activePermission)
             form.content(ChatColor.RED + "メールを見る権限がありません");
 
-        return form.build();
+        player.sendForm(form.build());
     }
 
-    private Form createInboxPanel() {
+    private void openInboxPanel() {
         List<MailData> mails = Lists.newArrayList(mailer.getMailManager().getInboxMails(mailSender));
 
         SimpleButtonForm b = SimpleButtonForm.builder(owner)
                 .title("受信箱  " + mails.size() + "件")
-                .button("メニューに戻る", () -> player.sendForm(createMainPanel()))
-                .button("メール管理", () -> player.sendForm(createInboxManagePanel()));
+                .button("メニューに戻る", this::openMainPanel)
+                .button("メール管理", this::openInboxManagePanel);
 
         for (MailData mail : mails) {
             boolean unread = !mail.isRead(mailSender);
@@ -136,22 +131,22 @@ public class BedrockMailPanel {
                     .text(mail.getFrom().getName())
                     .text(" : ").text(mailer.formatContentSummary(mail))
                     .toString(),
-                    () -> player.sendForm(createViewPanel(mail)));
+                    () -> openViewPanel(mail));
         }
 
-        return b.build();
+        player.sendForm(b.build());
     }
 
-    private Form createInboxManagePanel() {
-        return SimpleForm.builder().build();
+    private void openInboxManagePanel() {
+        player.sendForm(SimpleForm.builder().build());
     }
 
-    private Form createOutboxPanel() {
+    private void openOutboxPanel() {
         List<MailData> mails = Lists.newArrayList(mailer.getMailManager().getOutboxMails(mailSender));
         SimpleButtonForm b = SimpleButtonForm.builder(owner)
                 .title("送信箱  " + mails.size() + "件")
-                .button("メニューに戻る", () -> player.sendForm(createMainPanel()))
-                .button("メール管理", () -> player.sendForm(createOutboxManagePanel()));
+                .button("メニューに戻る", this::openMainPanel)
+                .button("メール管理", this::openOutboxManagePanel);
 
         for (MailData mail : mails) {
             b.button(StrGen.builder()
@@ -162,17 +157,17 @@ public class BedrockMailPanel {
                             .text(mail.getFrom().getName())
                             .text(" : ").text(mailer.formatContentSummary(mail))
                             .toString(),
-                    () -> player.sendForm(createViewPanel(mail)));
+                    () -> openViewPanel(mail));
         }
 
-        return b.build();
+        player.sendForm(b.build());
     }
 
-    private Form createOutboxManagePanel() {
-        return SimpleButtonForm.builder(owner).build();
+    private void openOutboxManagePanel() {
+        player.sendForm(SimpleButtonForm.builder(owner).build());
     }
 
-    private Form createViewPanel(MailData mail) {
+    private void openViewPanel(MailData mail) {
         String toName = mailer.joinToAndGroup(mail);
         StrGen content = StrGen.builder()
                 .text(ChatColor.RED).text("送信者: ").text(ChatColor.WHITE).text(mail.getFrom().getName() + "  ")
@@ -233,41 +228,41 @@ public class BedrockMailPanel {
 
         if (mailer.getMailManager().getTrashboxMails(mailSender).contains(mail)) {
             if (MailPermission.TRASH.can(bukkitPlayer)) {
-                b.button1("ゴミ箱に戻る", () -> player.sendForm(createTrashPanel()));
+                b.button1("ゴミ箱に戻る", this::openTrashPanel);
             } else {
-                b.button1("メニューに戻る", () -> player.sendForm(createMainPanel()));
+                b.button1("メニューに戻る", this::openMainPanel);
             }
-            b.button2("メール操作", () -> player.sendForm(createTrashActionPanel(mail)));
+            b.button2("メール操作", () -> openTrashActionPanel(mail));
         } else if (mailer.getMailManager().getOutboxMails(mailSender).contains(mail)) {
             if (MailPermission.OUTBOX.can(bukkitPlayer)) {
-                b.button1("送信箱に戻る", () -> player.sendForm(createOutboxPanel()));
+                b.button1("送信箱に戻る", this::openOutboxPanel);
             } else {
-                b.button1("メニューに戻る", () -> player.sendForm(createMainPanel()));
+                b.button1("メニューに戻る", this::openMainPanel);
             }
-            b.button2("メール操作", () -> player.sendForm(createOutboxActionPanel(mail)));
+            b.button2("メール操作", () -> openOutboxActionPanel(mail));
         } else {
             if (MailPermission.INBOX.can(bukkitPlayer)) {
-                b.button1("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
+                b.button1("受信箱に戻る", this::openInboxPanel);
             } else {
-                b.button1("メニューに戻る", () -> player.sendForm(createMainPanel()));
+                b.button1("メニューに戻る", this::openMainPanel);
             }
-            b.button2("メール操作", () -> player.sendForm(createInboxActionPanel(mail)));
+            b.button2("メール操作", () -> openInboxActionPanel(mail));
         }
 
         if (!mail.isRead(mailSender) && (mail.getAttachments().size() == 0 || mail.isAttachmentsCancelled())) {
             mail.setReadFlag(mailSender);
             mailer.getMailManager().saveMail(mail);
         }
-        return b.build();
+        player.sendForm(b.build());
     }
 
-    private Form createTrashPanel() {
+    private void openTrashPanel() {
         List<MailData> mails = mailer.getMailManager().getTrashboxMails(mailSender);
 
         SimpleButtonForm b = SimpleButtonForm.builder(owner)
                 .title("ゴミ箱  " + mails.size() + "件")
-                .button("メニューに戻る", () -> player.sendForm(createMainPanel()))
-                .button("メール管理", () -> player.sendForm(createTrashPanel()));
+                .button("メニューに戻る", this::openMainPanel)
+                .button("メール管理", this::openTrashPanel);
 
         for (MailData mail : mails) {
             b.button(StrGen.builder()
@@ -277,57 +272,61 @@ public class BedrockMailPanel {
                     .text(mail.getFrom().getName())
                     .text(" : ").text(mailer.formatContentSummary(mail))
                     .toString(),
-                    () -> player.sendForm(createViewPanel(mail))
+                    () -> openViewPanel(mail)
             );
         }
 
-        return b.build();
+        player.sendForm(b.build());
     }
 
-    private Form createTrashActionPanel(MailData mail) {
+    private void openTrashActionPanel(MailData mail) {
         String panelTitle = "メール #" + mail.getIndex();
         SimpleButtonForm b = SimpleButtonForm.builder(JavaPlugin.getProvidingPlugin(MailGUIPlugin.class))
                 .title(panelTitle)
-                .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                .button("メール画面に戻る", () -> openViewPanel(mail));
 
-        if (mail.isEditmode() || !mail.isRelatedWith(mailSender) || !mail.isSetTrash(mailSender))
-            return b.build();
+        if (mail.isEditmode() || !mail.isRelatedWith(mailSender) || !mail.isSetTrash(mailSender)) {
+            player.sendForm(b.build());
+            return;
+        }
 
         b.button("ゴミ箱から戻す", () -> {
             SimpleButtonForm form = SimpleButtonForm.builder(owner)
                     .title(panelTitle);
             if (!mail.isRelatedWith(mailSender)) {
                 form.content(ChatColor.RED + "指定されたメールはあなた宛ではないので表示できません");
-                form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                form.button("メール画面に戻る", () -> openViewPanel(mail));
             } else {
                 mail.removeTrashFlag(mailSender);
                 mailer.getMailManager().saveMail(mail);
                 form.content("ゴミ箱から戻しました");
-                form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                form.button("メール画面に戻る", () -> openViewPanel(mail));
                 if (mailer.getMailManager().getInboxMails(mailSender).contains(mail) && MailPermission.INBOX.can(bukkitPlayer))
-                    form.button("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
+                    form.button("受信箱に戻る", this::openInboxPanel);
                 if (mailer.getMailManager().getOutboxMails(mailSender).contains(mail) && MailPermission.OUTBOX.can(bukkitPlayer))
-                    form.button("送信箱に戻る", () -> player.sendForm(createOutboxPanel()));
+                    form.button("送信箱に戻る", this::openOutboxPanel);
                 if (MailPermission.TRASH.can(bukkitPlayer)) {
-                    form.button("ゴミ箱に戻る", () -> player.sendForm(createTrashPanel()));
+                    form.button("ゴミ箱に戻る", this::openTrashPanel);
                 } else {
-                    form.button("メニューに戻る", () -> player.sendForm(createMainPanel()));
+                    form.button("メニューに戻る", this::openMainPanel);
                 }
             }
             player.sendForm(form.build());
         });
 
-        return b.build();
+        player.sendForm(b.build());
     }
 
-    private Form createInboxActionPanel(MailData mail) {
+    private void openInboxActionPanel(MailData mail) {
         String panelTitle = "メール #" + mail.getIndex();
         SimpleButtonForm b = SimpleButtonForm.builder(JavaPlugin.getProvidingPlugin(MailGUIPlugin.class))
                 .title(panelTitle)
-                .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                .button("メール画面に戻る", () -> openViewPanel(mail));
 
-        if (mail.isEditmode() || !mail.isRecipient(mailSender) || !mailer.getMailManager().getInboxMails(mailSender).contains(mail))
-            return b.build();
+        if (mail.isEditmode() || !mail.isRecipient(mailSender) || !mailer.getMailManager().getInboxMails(mailSender).contains(mail)) {
+            player.sendForm(b.build());
+            return;
+        }
 
         if (mail.getAttachments().isEmpty() && MailPermission.TRASH.can(bukkitPlayer)) {
             b.button("ゴミ箱に移動する", () -> {
@@ -335,20 +334,20 @@ public class BedrockMailPanel {
                         .title(panelTitle);
                 if (!MailPermission.TRASH.can(bukkitPlayer)) {
                     form.content(ChatColor.RED + "ゴミ箱に移動する権限がありません");
-                    form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                    form.button("メール画面に戻る", () -> openViewPanel(mail));
                 } else if (!mail.isRelatedWith(mailSender)) {
                     form.content(ChatColor.RED + "指定されたメールはあなた宛ではないので表示できません");
-                    form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                    form.button("メール画面に戻る", () -> openViewPanel(mail));
                 } else if (!mail.isRead(mailSender)) {
                     form.content(ChatColor.RED + "未読メールのためゴミ箱に移動できません");
-                    form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                    form.button("メール画面に戻る", () -> openViewPanel(mail));
                 } else {
                     form.content("ゴミ箱に移動しました");
-                    form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                    form.button("メール画面に戻る", () -> openViewPanel(mail));
                     if (MailPermission.TRASH.can(bukkitPlayer))
-                        form.button("ゴミ箱に戻る", () -> player.sendForm(createTrashPanel()));
+                        form.button("ゴミ箱に戻る", this::openTrashPanel);
                     if (MailPermission.INBOX.can(bukkitPlayer))
-                        form.button("受信箱に戻る", () -> player.sendForm(createInboxPanel()));
+                        form.button("受信箱に戻る", this::openInboxPanel);
                     mail.setTrashFlag(mailSender);
                     mailer.getMailManager().saveMail(mail);
                 }
@@ -358,12 +357,15 @@ public class BedrockMailPanel {
 
         if (mail.isAttachmentsRefused()) {
             b.content(ChatColor.RED + "受信者により添付が受取拒否されました");
-            return b.build();
+            player.sendForm(b.build());
+            return;
         } else if (mail.isAttachmentsCancelled()) {
             b.content(ChatColor.RED + "送信者により添付がキャンセルされました");
-            return b.build();
+            player.sendForm(b.build());
+            return;
         } else if (mail.getAttachments().isEmpty()) {
-            return b.build();
+            player.sendForm(b.build());
+            return;
         }
 
         boolean refuseButton = true;
@@ -387,7 +389,7 @@ public class BedrockMailPanel {
                             player.sendForm(SimpleButtonForm.builder(owner)
                                     .title(panelTitle)
                                     .content(ChatColor.RED + "送付ボックスを開く権限がありません")
-                                    .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)))
+                                    .button("メール画面に戻る", () -> openViewPanel(mail))
                                     .build());
                         } else if (mailer.tryAcceptCostMoney(mailSender, mail)) {
                             openAttachmentInventory(bukkitPlayer, mail, null);
@@ -395,7 +397,7 @@ public class BedrockMailPanel {
                             player.sendForm(SimpleButtonForm.builder(owner)
                                     .title(panelTitle)
                                     .content(ChatColor.RED + "必要なお金が足りません！\n" + ChatColor.WHITE + "要求: " + ChatColor.GOLD + ChatColor.BOLD + costDesc)
-                                    .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)))
+                                    .button("メール画面に戻る", () -> openViewPanel(mail))
                                     .build());
                         }
                     });
@@ -415,7 +417,7 @@ public class BedrockMailPanel {
                             player.sendForm(SimpleButtonForm.builder(owner)
                                     .title(panelTitle)
                                     .content(ChatColor.RED + "送付ボックスを開く権限がありません")
-                                    .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)))
+                                    .button("メール画面に戻る", () -> openViewPanel(mail))
                                     .build());
                         } else if (mailer.tryAcceptCostItem(bukkitPlayer, mailSender, mail)) {
                             openAttachmentInventory(bukkitPlayer, mail, null);
@@ -423,7 +425,7 @@ public class BedrockMailPanel {
                             player.sendForm(SimpleButtonForm.builder(owner)
                                     .title(panelTitle)
                                     .content(ChatColor.RED + "必要なアイテムが足りません！\n" + ChatColor.WHITE + "要求: " + ChatColor.GOLD + ChatColor.BOLD + costDesc)
-                                    .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)))
+                                    .button("メール画面に戻る", () -> openViewPanel(mail))
                                     .build());
                         }
                     });
@@ -434,7 +436,7 @@ public class BedrockMailPanel {
                     player.sendForm(SimpleButtonForm.builder(owner)
                             .title(panelTitle)
                             .content(ChatColor.RED + "送付ボックスを開く権限がありません")
-                            .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)))
+                            .button("メール画面に戻る", () -> openViewPanel(mail))
                             .build());
                 } else {
                     openAttachmentInventory(bukkitPlayer, mail, null);
@@ -475,21 +477,23 @@ public class BedrockMailPanel {
                     // 受信者側に、拒否した該当メールの詳細画面を開く
                     form.content("アイテムの受け取りを拒否し、送信者へ返送メールを送信しました。");
                 }
-                player.sendForm(form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail))));
+                player.sendForm(form.button("メール画面に戻る", () -> openViewPanel(mail)));
             });
         }
 
-        return b.build();
+        player.sendForm(b.build());
     }
 
-    private Form createOutboxActionPanel(MailData mail) {
+    private void openOutboxActionPanel(MailData mail) {
         String panelTitle = "メール #" + mail.getIndex();
         SimpleButtonForm b = SimpleButtonForm.builder(JavaPlugin.getProvidingPlugin(MailGUIPlugin.class))
                 .title(panelTitle)
-                .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                .button("メール画面に戻る", () -> openViewPanel(mail));
 
-        if (mail.isEditmode() || !mail.getFrom().equals(mailSender) || !mailer.getMailManager().getOutboxMails(mailSender).contains(mail))
-            return b.build();
+        if (mail.isEditmode() || !mail.getFrom().equals(mailSender) || !mailer.getMailManager().getOutboxMails(mailSender).contains(mail)) {
+            player.sendForm(b.build());
+            return;
+        }
 
         if (!mail.getAttachments().isEmpty()) {
             if (mail.isAttachmentsCancelled()) {
@@ -501,7 +505,7 @@ public class BedrockMailPanel {
                             player.sendForm(SimpleButtonForm.builder(owner)
                                     .title(panelTitle)
                                     .content(ChatColor.RED + "送付ボックスを開く権限がありません")
-                                    .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)))
+                                    .button("メール画面に戻る", () -> openViewPanel(mail))
                                     .build());
                         } else {
                             openAttachmentInventory(bukkitPlayer, mail, null);
@@ -517,15 +521,15 @@ public class BedrockMailPanel {
                         SimpleButtonForm form = SimpleButtonForm.builder(owner).title(panelTitle);
                         if (mail.isAttachmentsCancelled()) {
                             form.content(ChatColor.RED + "既に添付アイテムはキャンセルされています");
-                            form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                            form.button("メール画面に戻る", () -> openViewPanel(mail));
                         } else if (mail.isAttachmentsOpened()) {
                             form.content(ChatColor.RED + "既に受信者がボックスを開いたため、キャンセルできません");
-                            form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                            form.button("メール画面に戻る", () -> openViewPanel(mail));
                         } else if (!checkAttachInboxPermission(bukkitPlayer)) {
                             player.sendForm(SimpleButtonForm.builder(owner)
                                     .title(panelTitle)
                                     .content(ChatColor.RED + "送付ボックスを開く権限がありません")
-                                    .button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)))
+                                    .button("メール画面に戻る", () -> openViewPanel(mail))
                                     .build());
                         } else {
                             mail.cancelAttachments();
@@ -553,27 +557,27 @@ public class BedrockMailPanel {
                         .title(panelTitle);
                 if (!MailPermission.TRASH.can(bukkitPlayer)) {
                     form.content(ChatColor.RED + "ゴミ箱に移動する権限がありません");
-                    form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                    form.button("メール画面に戻る", () -> openViewPanel(mail));
                 } else if (!mail.isRelatedWith(mailSender)) {
                     form.content(ChatColor.RED + "指定されたメールはあなた宛ではないので表示できません");
-                    form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                    form.button("メール画面に戻る", () -> openViewPanel(mail));
                 } else if (!mail.isRead(mailSender)) {
                     form.content(ChatColor.RED + "未読メールのためゴミ箱に移動できません");
-                    form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                    form.button("メール画面に戻る", () -> openViewPanel(mail));
                 } else {
                     form.content("ゴミ箱に移動しました");
-                    form.button("メール画面に戻る", () -> player.sendForm(createViewPanel(mail)));
+                    form.button("メール画面に戻る", () -> openViewPanel(mail));
                     if (MailPermission.TRASH.can(bukkitPlayer))
-                        form.button("ゴミ箱に戻る", () -> player.sendForm(createTrashPanel()));
+                        form.button("ゴミ箱に戻る", this::openTrashPanel);
                     if (MailPermission.OUTBOX.can(bukkitPlayer))
-                        form.button("送信箱に戻る", () -> player.sendForm(createOutboxPanel()));
+                        form.button("送信箱に戻る", this::openTrashPanel);
                     mail.setTrashFlag(mailSender);
                     mailer.getMailManager().saveMail(mail);
                 }
                 player.sendForm(form.build());
             });
         }
-        return b.build();
+        player.sendForm(b.build());
     }
 
     private void openAttachmentInventory(Player player, MailData mail, @Nullable Runnable close) {
@@ -586,7 +590,7 @@ public class BedrockMailPanel {
                 if (close != null) {
                     close.run();
                 } else {
-                    BedrockMailPanel.this.player.sendForm(createViewPanel(mail));
+                    openViewPanel(mail);
                 }
             }
         }, owner);
