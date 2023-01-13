@@ -466,10 +466,10 @@ public class BedrockMailPanel {
                 } else {
                     form.content("ゴミ箱に移動しました");
                     form.button("メール画面に戻る", () -> openViewPanel(mail));
-                    if (MailPermission.TRASH.can(bukkitPlayer))
-                        form.button("ゴミ箱に戻る", this::openTrashPanel);
                     if (MailPermission.INBOX.can(bukkitPlayer))
                         form.button("受信箱に戻る", this::openInboxPanel);
+                    if (MailPermission.TRASH.can(bukkitPlayer))
+                        form.button("ゴミ箱に戻る", this::openTrashPanel);
                     mail.setTrashFlag(mailSender);
                     mailer.getMailManager().saveMail(mail);
                 }
@@ -711,10 +711,10 @@ public class BedrockMailPanel {
                 } else {
                     form.content("ゴミ箱に移動しました");
                     form.button("メール画面に戻る", () -> openViewPanel(mail));
+                    if (MailPermission.OUTBOX.can(bukkitPlayer))
+                        form.button("送信箱に戻る", this::openOutboxPanel);
                     if (MailPermission.TRASH.can(bukkitPlayer))
                         form.button("ゴミ箱に戻る", this::openTrashPanel);
-                    if (MailPermission.OUTBOX.can(bukkitPlayer))
-                        form.button("送信箱に戻る", this::openTrashPanel);
                     mail.setTrashFlag(mailSender);
                     mailer.getMailManager().saveMail(mail);
                 }
