@@ -507,19 +507,9 @@ public class BedrockMailPanel {
                                     .text("必要: " + ChatColor.BOLD + costDesc))
                             .toString(),
                     () -> {
-                        if (checkMailerLoadingWithPrompt(null))
-                            return;
-
-                        if (!checkAttachInboxPermission(bukkitPlayer)) {
-                            player.sendForm(SimpleButtonForm.builder(owner)
-                                    .title(panelTitle)
-                                    .content(ChatColor.RED + "送付ボックスを開く権限がありません")
-                                    .button("メール画面に戻る", () -> openViewPanel(mail))
-                                    .build());
-                            return;
-                        }
-
-                        if (checkDeniedAttachmentWorldPrompt("メール画面に戻る", () -> openViewPanel(mail)))
+                        if (checkMailerLoadingWithPrompt(null)
+                                || checkDeniedAttachInboxPermissionPrompt(bukkitPlayer, "メール画面に戻る", () -> openViewPanel(mail))
+                                || checkDeniedAttachmentWorldPrompt("メール画面に戻る", () -> openViewPanel(mail)))
                             return;
 
                         if (mailer.tryAcceptCostMoney(mailSender, mail)) {
@@ -544,19 +534,9 @@ public class BedrockMailPanel {
                                     .text("必要: " + ChatColor.BOLD + costDesc))
                             .toString(),
                     () -> {
-                        if (checkMailerLoadingWithPrompt(null))
-                            return;
-
-                        if (!checkAttachInboxPermission(bukkitPlayer)) {
-                            player.sendForm(SimpleButtonForm.builder(owner)
-                                    .title(panelTitle)
-                                    .content(ChatColor.RED + "送付ボックスを開く権限がありません")
-                                    .button("メール画面に戻る", () -> openViewPanel(mail))
-                                    .build());
-                            return;
-                        }
-
-                        if (checkDeniedAttachmentWorldPrompt("メール画面に戻る", () -> openViewPanel(mail)))
+                        if (checkMailerLoadingWithPrompt(null)
+                                || checkDeniedAttachInboxPermissionPrompt(bukkitPlayer, "メール画面に戻る", () -> openViewPanel(mail))
+                                || checkDeniedAttachmentWorldPrompt("メール画面に戻る", () -> openViewPanel(mail)))
                             return;
 
                         if (mailer.tryAcceptCostItem(bukkitPlayer, mailSender, mail)) {
@@ -572,16 +552,8 @@ public class BedrockMailPanel {
 
         } else {
             b.button("送付ボックスを開く", () -> {
-                if (!checkAttachInboxPermission(bukkitPlayer)) {
-                    player.sendForm(SimpleButtonForm.builder(owner)
-                            .title(panelTitle)
-                            .content(ChatColor.RED + "送付ボックスを開く権限がありません")
-                            .button("メール画面に戻る", () -> openViewPanel(mail))
-                            .build());
-                    return;
-                }
-
-                if (checkDeniedAttachmentWorldPrompt("メール画面に戻る", () -> openViewPanel(mail)))
+                if (checkDeniedAttachInboxPermissionPrompt(bukkitPlayer, "メール画面に戻る", () -> openViewPanel(mail))
+                        || checkDeniedAttachmentWorldPrompt("メール画面に戻る", () -> openViewPanel(mail)))
                     return;
 
                 openAttachmentInventory(mail, null);
@@ -651,19 +623,9 @@ public class BedrockMailPanel {
                     b.content(ChatColor.RED + "送付ボックスを開く権限がありません");
                 } else {
                     b.button("送付ボックスを開く", () -> {
-                        if (checkMailerLoadingWithPrompt(null))
-                            return;
-
-                        if (!checkAttachInboxPermission(bukkitPlayer)) {
-                            player.sendForm(SimpleButtonForm.builder(owner)
-                                    .title(panelTitle)
-                                    .content(ChatColor.RED + "送付ボックスを開く権限がありません")
-                                    .button("メール画面に戻る", () -> openViewPanel(mail))
-                                    .build());
-                            return;
-                        }
-
-                        if (checkDeniedAttachmentWorldPrompt("メール画面に戻る", () -> openViewPanel(mail)))
+                        if (checkMailerLoadingWithPrompt(null)
+                                || checkDeniedAttachInboxPermissionPrompt(bukkitPlayer, "メール画面に戻る", () -> openViewPanel(mail))
+                                || checkDeniedAttachmentWorldPrompt("メール画面に戻る", () -> openViewPanel(mail)))
                             return;
 
                         openAttachmentInventory(mail, null);
@@ -686,14 +648,9 @@ public class BedrockMailPanel {
                         } else if (mail.isAttachmentsOpened()) {
                             form.content(ChatColor.RED + "既に受信者がボックスを開いたため、キャンセルできません");
                             form.button("メール画面に戻る", () -> openViewPanel(mail));
-                        } else if (!checkAttachInboxPermission(bukkitPlayer)) {
-                            player.sendForm(SimpleButtonForm.builder(owner)
-                                    .title(panelTitle)
-                                    .content(ChatColor.RED + "送付ボックスを開く権限がありません")
-                                    .button("メール画面に戻る", () -> openViewPanel(mail))
-                                    .build());
                         } else {
-                            if (checkDeniedAttachmentWorldPrompt("メール画面に戻る", () -> openViewPanel(mail)))
+                            if (checkDeniedAttachInboxPermissionPrompt(bukkitPlayer, "メール画面に戻る", () -> openViewPanel(mail))
+                                    || checkDeniedAttachmentWorldPrompt("メール画面に戻る", () -> openViewPanel(mail)))
                                 return;
 
                             mail.cancelAttachments();
@@ -768,6 +725,17 @@ public class BedrockMailPanel {
 
     private boolean checkAttachInboxPermission(Permissible permissible) {
         return mailer.getMailer().getUndineConfig().isEnableAttachment() && MailPermission.ATTACH.can(permissible) && MailPermission.ATTACH_INBOXMAIL.can(permissible);
+    }
+
+    private boolean checkDeniedAttachInboxPermissionPrompt(Permissible permissible, String buttonName, Runnable close) {
+        if (checkAttachInboxPermission(permissible))
+            return false;
+
+        player.sendForm(SimpleButtonForm.builder(owner)
+                .title("添付ボックス")
+                .content(ChatColor.RED + "送付ボックスを開く権限がありません")
+                .button(buttonName, close));
+        return true;
     }
 
     private boolean checkMailerLoadingWithPrompt(@Nullable Runnable retry) {
