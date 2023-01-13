@@ -101,6 +101,7 @@ public class MailWrapper {
         return String.join(", ", names);
     }
 
+    @SuppressWarnings("deprecation")
     public String itemDesc(ItemStack item, boolean forDescription) {
         if (item == null) {
             return "null";
@@ -113,6 +114,8 @@ public class MailWrapper {
             }
         }
     }
+
+    // cost util
 
     public String formatCostMoney(double cost) {
         return Optional.ofNullable(mailer.getVaultEco())
@@ -160,6 +163,7 @@ public class MailWrapper {
         return true;
     }
 
+    @SuppressWarnings("deprecation")
     private boolean hasItem(Player player, ItemStack item) {
         int total = 0;
         for ( ItemStack i : player.getInventory().getContents() ) {
@@ -172,6 +176,7 @@ public class MailWrapper {
         return false;
     }
 
+    @SuppressWarnings("deprecation")
     private boolean consumeItem(Player player, ItemStack item) {
         Inventory inv = player.getInventory();
         int remain = item.getAmount();
@@ -235,6 +240,8 @@ public class MailWrapper {
         return true;
     }
 
+    // read / unread
+
     /**
      * 受信箱の未読メール全てに既読フラグを立てます<br>
      * 添付アイテムが残っているメールは失敗に分類されます
@@ -260,6 +267,8 @@ public class MailWrapper {
         return MailsResult.of(mails, fails);
     }
 
+    // trash
+
     /**
      * 受信箱の全メールにゴミ箱フラグを立てます<br>
      * 添付アイテムが残っている、または未読メールは失敗に分類されます
@@ -282,6 +291,63 @@ public class MailWrapper {
 
         return MailsResult.of(mails, fails);
     }
+
+    /**
+     * 送信箱の全メールにゴミ箱フラグを立てます<br>
+     * 添付アイテムが残っているメールは失敗に分類されます
+     */
+    public MailsResult setTrashFlagOutboxMails(MailSender mailSender) {
+        if (!available())
+            return MailsResult.empty();
+
+        List<MailData> mails = Lists.newArrayList(mailer.getMailManager().getOutboxMails(mailSender));
+        List<MailData> fails = Lists.newArrayList();
+
+        for (MailData mail : mails) {
+            if (mail.getAttachments().isEmpty()) {
+                mail.setTrashFlag(mailSender);
+                mailer.getMailManager().saveMail(mail);
+            } else {
+                fails.add(mail);
+            }
+        }
+
+        return MailsResult.of(mails, fails);
+    }
+
+    public MailsResult removeTrashFlagInboxMails(MailSender mailSender) {
+        if (!available())
+            return MailsResult.empty();
+
+        List<MailData> mails = mailer.getMailManager().getTrashboxMails(mailSender).stream()
+                .filter(mail -> mail.isAllMail()
+                        || (mail.getToTotal() != null && mail.getToTotal().contains(mailSender))
+                        || mail.getTo().contains(mailSender))
+                .peek(mail -> {
+                    mail.removeTrashFlag(mailSender);
+                    mailer.getMailManager().saveMail(mail);
+                })
+                .collect(Collectors.toList());
+
+        return MailsResult.of(mails, Collections.emptyList());
+    }
+
+    public MailsResult removeTrashFlagOutboxMails(MailSender mailSender) {
+        if (!available())
+            return MailsResult.empty();
+
+        List<MailData> mails = mailer.getMailManager().getTrashboxMails(mailSender).stream()
+                .filter(mail -> mail.getFrom().equals(mailSender))
+                .peek(mail -> {
+                    mail.removeTrashFlag(mailSender);
+                    mailer.getMailManager().saveMail(mail);
+                })
+                .collect(Collectors.toList());
+
+        return MailsResult.of(mails, Collections.emptyList());
+    }
+
+    // attachments
 
     /**
      * 受信箱の添付アイテムがある全メールからアイテムを inventory に移動します<br>
@@ -346,61 +412,6 @@ public class MailWrapper {
         }
 
         return ItemMailsResult.of(mails, fails, items, failItems);
-    }
-
-    /**
-     * 送信箱の全メールにゴミ箱フラグを立てます<br>
-     * 添付アイテムが残っているメールは失敗に分類されます
-     */
-    public MailsResult setTrashFlagOutboxMails(MailSender mailSender) {
-        if (!available())
-            return MailsResult.empty();
-
-        List<MailData> mails = Lists.newArrayList(mailer.getMailManager().getOutboxMails(mailSender));
-        List<MailData> fails = Lists.newArrayList();
-
-        for (MailData mail : mails) {
-            if (mail.getAttachments().isEmpty()) {
-                mail.setTrashFlag(mailSender);
-                mailer.getMailManager().saveMail(mail);
-            } else {
-                fails.add(mail);
-            }
-        }
-
-        return MailsResult.of(mails, fails);
-    }
-
-    public MailsResult removeTrashFlagInboxMails(MailSender mailSender) {
-        if (!available())
-            return MailsResult.empty();
-
-        List<MailData> mails = mailer.getMailManager().getTrashboxMails(mailSender).stream()
-                .filter(mail -> mail.isAllMail()
-                        || (mail.getToTotal() != null && mail.getToTotal().contains(mailSender))
-                        || mail.getTo().contains(mailSender))
-                .peek(mail -> {
-                    mail.removeTrashFlag(mailSender);
-                    mailer.getMailManager().saveMail(mail);
-                })
-                .collect(Collectors.toList());
-
-        return MailsResult.of(mails, Collections.emptyList());
-    }
-
-    public MailsResult removeTrashFlagOutboxMails(MailSender mailSender) {
-        if (!available())
-            return MailsResult.empty();
-
-        List<MailData> mails = mailer.getMailManager().getTrashboxMails(mailSender).stream()
-                .filter(mail -> mail.getFrom().equals(mailSender))
-                .peek(mail -> {
-                    mail.removeTrashFlag(mailSender);
-                    mailer.getMailManager().saveMail(mail);
-                })
-                .collect(Collectors.toList());
-
-        return MailsResult.of(mails, Collections.emptyList());
     }
 
 }
