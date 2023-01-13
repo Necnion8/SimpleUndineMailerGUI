@@ -195,7 +195,12 @@ public class BedrockMailPanel {
                     MailsResult res = mailer.setTrashFlagInboxMails(mailSender);
                     int done = res.getAll().size() - res.getFails().size();
 
-                    form.content((done > 0) ? "既読メール " + done + "通 をゴミ箱に移動しました" : ChatColor.RED + "ゴミ箱に移動できるメールがありませんでした");
+                    if (done <= 0) {
+                         form.content(ChatColor.RED + "ゴミ箱に移動できるメールがありませんでした");
+                    } else {
+                        form.content("既読メール " + done + "通 をゴミ箱に移動しました");
+                        form.button("ゴミ箱", this::openTrashPanel);
+                    }
                 }
                 form.button("メール管理", this::openInboxManagePanel);
                 player.sendForm(form.build());
@@ -298,6 +303,7 @@ public class BedrockMailPanel {
                         form.content(ChatColor.RED + "ゴミ箱に移動できるメールがありませんでした\n添付アイテムが残っているメールはゴミ箱に移動できません");
                     } else {
                         form.content("送信メール " + done + "通 をゴミ箱に移動しました");
+                        form.button("ゴミ箱", this::openTrashPanel);
                     }
                 }
                 form.button("メール管理", this::openOutboxManagePanel);
