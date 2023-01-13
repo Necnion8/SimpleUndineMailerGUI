@@ -435,7 +435,7 @@ public class BedrockMailPanel {
                 .title(panelTitle)
                 .button("メール画面に戻る", () -> openViewPanel(mail));
 
-        if (mail.isEditmode() || !mail.isRelatedWith(mailSender) || !mail.isSetTrash(mailSender)) {
+        if (mail.isEditmode() || !mail.isRelatedWith(mailSender) || !mail.isSetTrash(mailSender) || !MailPermission.TRASH.can(bukkitPlayer)) {
             player.sendForm(b.build());
             return;
         }
@@ -446,7 +446,10 @@ public class BedrockMailPanel {
             if (checkMailerLoadingWithPrompt(null))
                 return;
 
-            if (!mail.isRelatedWith(mailSender)) {
+            if (!MailPermission.TRASH.can(bukkitPlayer)) {
+                form.content(ChatColor.RED + "ゴミ箱から戻す権限がありません");
+                form.button("メール画面に戻る", () -> openViewPanel(mail));
+            } else if (!mail.isRelatedWith(mailSender)) {
                 form.content(ChatColor.RED + "指定されたメールはあなた宛ではないので表示できません");
                 form.button("メール画面に戻る", () -> openViewPanel(mail));
             } else {
