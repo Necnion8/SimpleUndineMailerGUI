@@ -723,7 +723,7 @@ public class BedrockMailPanel {
                 if (close != null) {
                     close.run();
                 } else {
-                    openViewPanel(mail);
+                    Bukkit.getScheduler().scheduleSyncDelayedTask(owner, () -> openViewPanel(mail), 0);
                 }
             }
         }, owner);
