@@ -267,7 +267,45 @@ public class BedrockMailPanel {
     }
 
     private void openOutboxManagePanel() {
-        player.sendForm(SimpleButtonForm.builder(owner).build());
+        if (checkMailerLoadingWithPrompt(this::openOutboxManagePanel))
+            return;
+
+        long trashMails = mailer.getMailManager().getOutboxMails(mailSender).stream()
+                .filter(mail -> mail.getAttachments().isEmpty())
+                .count();
+
+        SimpleButtonForm b = SimpleButtonForm.builder(owner)
+                .title("送信メール管理")
+                .button("送信箱に戻る", this::openOutboxPanel);
+
+        if (MailPermission.TRASH.can(bukkitPlayer)) {
+            b.button("送信メールを全てゴミ箱に移動する\n送信メール: " + trashMails + "通", () -> {
+                if (checkMailerLoadingWithPrompt(this::openOutboxManagePanel))
+                    return;
+
+                SimpleButtonForm form = SimpleButtonForm.builder(owner).title("送信メール管理");
+
+                if (!MailPermission.TRASH.can(bukkitPlayer)) {
+                    form.content(ChatColor.RED + "ゴミ箱に移動する権限がありません");
+
+                } else {
+                    MailsResult res = mailer.setTrashFlagOutboxMails(mailSender);
+                    int done = res.getAll().size() - res.getFails().size();
+
+                    if (res.getAll().isEmpty()) {
+                        form.content(ChatColor.RED + "ゴミ箱に移動できるメールがありませんでした");
+                    } else if (done <= 0) {
+                        form.content(ChatColor.RED + "ゴミ箱に移動できるメールがありませんでした\n添付アイテムが残っているメールはゴミ箱に移動できません");
+                    } else {
+                        form.content("送信メール " + done + "通 をゴミ箱に移動しました");
+                    }
+                }
+                form.button("メール管理", this::openOutboxManagePanel);
+                player.sendForm(form.build());
+            });
+        }
+
+        player.sendForm(b.build());
     }
 
     private void openViewPanel(MailData mail) {

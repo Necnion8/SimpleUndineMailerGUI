@@ -348,4 +348,27 @@ public class MailWrapper {
         return ItemMailsResult.of(mails, fails, items, failItems);
     }
 
+    /**
+     * 送信箱の全メールにゴミ箱フラグを立てます<br>
+     * 添付アイテムが残っているメールは失敗に分類されます
+     */
+    public MailsResult setTrashFlagOutboxMails(MailSender mailSender) {
+        if (!available())
+            return MailsResult.empty();
+
+        List<MailData> mails = Lists.newArrayList(mailer.getMailManager().getOutboxMails(mailSender));
+        List<MailData> fails = Lists.newArrayList();
+
+        for (MailData mail : mails) {
+            if (mail.getAttachments().isEmpty()) {
+                mail.setTrashFlag(mailSender);
+                mailer.getMailManager().saveMail(mail);
+            } else {
+                fails.add(mail);
+            }
+        }
+
+        return MailsResult.of(mails, fails);
+    }
+
 }
