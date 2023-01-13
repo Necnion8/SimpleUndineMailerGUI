@@ -127,7 +127,7 @@ public class BedrockMailPanel {
                     .join(() -> unread, ChatColor.DARK_RED + "***  ")
                     .text("#" + mail.getIndex())
                     .text("  送信日時: " + mailer.formatDateOrReadable(mail.getDate()))
-                    .join(() -> !mail.getAttachments().isEmpty(), "  (送付: " + mail.getAttachments().size() + ")")
+                    .join(() -> !mail.getAttachments().isEmpty(), "  (添付: " + mail.getAttachments().size() + ")")
                     .join(() -> unread, "  ***")
                     .text("\n")
                     .text(mail.getFrom().getName())
@@ -210,7 +210,7 @@ public class BedrockMailPanel {
                 SimpleButtonForm form = SimpleButtonForm.builder(owner).title("受信メール管理");
 
                 if (!checkAttachInboxPermission(bukkitPlayer)) {
-                    form.content(ChatColor.RED + "送付ボックスを開く権限がありません");
+                    form.content(ChatColor.RED + "添付ボックスを開く権限がありません");
 
                 } else {
                     ItemMailsResult result = mailer.takeAllAttachmentsInboxMails(mailSender, bukkitPlayer.getInventory());
@@ -255,7 +255,7 @@ public class BedrockMailPanel {
             b.button(StrGen.builder()
                             .text("#" + mail.getIndex())
                             .text("  送信日時: " + mailer.formatDateOrReadable(mail.getDate()))
-                            .join(() -> !mail.getAttachments().isEmpty(), "  (送付: " + mail.getAttachments().size() + ")")
+                            .join(() -> !mail.getAttachments().isEmpty(), "  (添付: " + mail.getAttachments().size() + ")")
                             .text("\n")
                             .text(mail.getFrom().getName())
                             .text(" : ").text(mailer.formatContentSummary(mail))
@@ -494,7 +494,7 @@ public class BedrockMailPanel {
 
         if (!checkAttachInboxPermission(bukkitPlayer)) {
             refuseButton = false;
-            b.content(ChatColor.RED + "送付ボックスを開く権限がありません");
+            b.content(ChatColor.RED + "添付ボックスを開く権限がありません");
 
         } else if (mail.getCostMoney() > 0) {
             String costDesc = mailer.formatCostMoney(mail.getCostMoney());
@@ -551,7 +551,7 @@ public class BedrockMailPanel {
                     });
 
         } else {
-            b.button("送付ボックスを開く", () -> {
+            b.button("添付ボックスを開く", () -> {
                 if (checkDeniedAttachInboxPermissionPrompt(bukkitPlayer, "メール画面に戻る", () -> openViewPanel(mail))
                         || checkDeniedAttachmentWorldPrompt("メール画面に戻る", () -> openViewPanel(mail)))
                     return;
@@ -620,9 +620,9 @@ public class BedrockMailPanel {
         if (!mail.getAttachments().isEmpty()) {
             if (mail.isAttachmentsCancelled()) {
                 if (!checkAttachInboxPermission(bukkitPlayer)) {
-                    b.content(ChatColor.RED + "送付ボックスを開く権限がありません");
+                    b.content(ChatColor.RED + "添付ボックスを開く権限がありません");
                 } else {
-                    b.button("送付ボックスを開く", () -> {
+                    b.button("添付ボックスを開く", () -> {
                         if (checkMailerLoadingWithPrompt(null)
                                 || checkDeniedAttachInboxPermissionPrompt(bukkitPlayer, "メール画面に戻る", () -> openViewPanel(mail))
                                 || checkDeniedAttachmentWorldPrompt("メール画面に戻る", () -> openViewPanel(mail)))
@@ -634,7 +634,7 @@ public class BedrockMailPanel {
 
             } else if (!mail.isAttachmentsOpened()) {
                 if (!checkAttachInboxPermission(bukkitPlayer)) {
-                    b.content(ChatColor.RED + "送付ボックスを開く権限がありません");
+                    b.content(ChatColor.RED + "添付ボックスを開く権限がありません");
                 } else {
                     b.button("添付アイテムをキャンセルする", () -> {
                         SimpleButtonForm form = SimpleButtonForm.builder(owner).title(panelTitle);
@@ -733,7 +733,7 @@ public class BedrockMailPanel {
 
         player.sendForm(SimpleButtonForm.builder(owner)
                 .title("添付ボックス")
-                .content(ChatColor.RED + "送付ボックスを開く権限がありません")
+                .content(ChatColor.RED + "添付ボックスを開く権限がありません")
                 .button(buttonName, close));
         return true;
     }
