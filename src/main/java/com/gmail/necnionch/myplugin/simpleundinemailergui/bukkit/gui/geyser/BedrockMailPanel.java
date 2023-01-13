@@ -25,7 +25,6 @@ import org.geysermc.floodgate.api.player.FloodgatePlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -144,20 +143,16 @@ public class BedrockMailPanel {
         if (checkMailerLoadingWithPrompt(this::openInboxManagePanel))
             return;
 
-        Function<MailData, Boolean> isRead = (mail) -> !mail.isRead(mailSender) && (mail.getAttachments().isEmpty() || mail.isAttachmentsCancelled());
-        Function<MailData, Boolean> isTrash = (mail) -> mail.getAttachments().isEmpty();
-        Function<MailData, Boolean> isAttach = (mail) -> !mail.getAttachments().isEmpty() && !mail.isAttachmentsCancelled() && mail.getCostItem() == null && mail.getCostMoney() <= 0;
-
         int readMails = 0;
         int trashMails = 0;
         int attachItems = 0;
 
         for (MailData mail : mailer.getMailManager().getInboxMails(mailSender)) {
-            if (isRead.apply(mail))
+            if (!mail.isRead(mailSender) && (mail.getAttachments().isEmpty() || mail.isAttachmentsCancelled()))
                 readMails++;
-            if (isTrash.apply(mail))
+            if (mail.isRead(mailSender) && mail.getAttachments().isEmpty())
                 trashMails++;
-            if (isAttach.apply(mail))
+            if (!mail.getAttachments().isEmpty() && !mail.isAttachmentsCancelled() && mail.getCostItem() == null && mail.getCostMoney() <= 0)
                 attachItems += mail.getAttachments().stream().mapToInt(ItemStack::getAmount).sum();
         }
 
