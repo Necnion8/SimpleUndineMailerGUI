@@ -516,7 +516,13 @@ public class BedrockMailPanel {
                                     .content(ChatColor.RED + "送付ボックスを開く権限がありません")
                                     .button("メール画面に戻る", () -> openViewPanel(mail))
                                     .build());
-                        } else if (mailer.tryAcceptCostMoney(mailSender, mail)) {
+                            return;
+                        }
+
+                        if (checkDeniedAttachmentWorldPrompt("メール画面に戻る", () -> openViewPanel(mail)))
+                            return;
+
+                        if (mailer.tryAcceptCostMoney(mailSender, mail)) {
                             openAttachmentInventory(mail, null);
                         } else {
                             player.sendForm(SimpleButtonForm.builder(owner)
@@ -547,7 +553,13 @@ public class BedrockMailPanel {
                                     .content(ChatColor.RED + "送付ボックスを開く権限がありません")
                                     .button("メール画面に戻る", () -> openViewPanel(mail))
                                     .build());
-                        } else if (mailer.tryAcceptCostItem(bukkitPlayer, mailSender, mail)) {
+                            return;
+                        }
+
+                        if (checkDeniedAttachmentWorldPrompt("メール画面に戻る", () -> openViewPanel(mail)))
+                            return;
+
+                        if (mailer.tryAcceptCostItem(bukkitPlayer, mailSender, mail)) {
                             openAttachmentInventory(mail, null);
                         } else {
                             player.sendForm(SimpleButtonForm.builder(owner)
@@ -566,9 +578,13 @@ public class BedrockMailPanel {
                             .content(ChatColor.RED + "送付ボックスを開く権限がありません")
                             .button("メール画面に戻る", () -> openViewPanel(mail))
                             .build());
-                } else {
-                    openAttachmentInventory(mail, null);
+                    return;
                 }
+
+                if (checkDeniedAttachmentWorldPrompt("メール画面に戻る", () -> openViewPanel(mail)))
+                    return;
+
+                openAttachmentInventory(mail, null);
             });
             refuseButton = false;
         }
@@ -644,9 +660,13 @@ public class BedrockMailPanel {
                                     .content(ChatColor.RED + "送付ボックスを開く権限がありません")
                                     .button("メール画面に戻る", () -> openViewPanel(mail))
                                     .build());
-                        } else {
-                            openAttachmentInventory(mail, null);
+                            return;
                         }
+
+                        if (checkDeniedAttachmentWorldPrompt("メール画面に戻る", () -> openViewPanel(mail)))
+                            return;
+
+                        openAttachmentInventory(mail, null);
                     });
                 }
 
@@ -673,6 +693,9 @@ public class BedrockMailPanel {
                                     .button("メール画面に戻る", () -> openViewPanel(mail))
                                     .build());
                         } else {
+                            if (checkDeniedAttachmentWorldPrompt("メール画面に戻る", () -> openViewPanel(mail)))
+                                return;
+
                             mail.cancelAttachments();
                             mailer.getMailManager().saveMail(mail);
                             openAttachmentInventory(mail, null);
@@ -757,6 +780,17 @@ public class BedrockMailPanel {
         form.button("メニューに戻る", this::openMainPanel);
         player.sendForm(form.build());
         return true;
+    }
+
+    private boolean checkDeniedAttachmentWorldPrompt(String buttonName, Runnable click) {
+        if (mailer.getMailer().getUndineConfig().getDisableWorldsToOpenAttachBox().contains(mailSender.getWorldName())) {
+            player.sendForm(SimpleButtonForm.builder(owner)
+                    .title("添付ボックス")
+                    .content(ChatColor.RED + "このワールドで開くことができません。\n別のワールドに移動してから添付ボックスを開いてください。")
+                    .button(buttonName, click));
+            return true;
+        }
+        return false;
     }
 
 }
