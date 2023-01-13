@@ -371,4 +371,36 @@ public class MailWrapper {
         return MailsResult.of(mails, fails);
     }
 
+    public MailsResult removeTrashFlagInboxMails(MailSender mailSender) {
+        if (!available())
+            return MailsResult.empty();
+
+        List<MailData> mails = mailer.getMailManager().getTrashboxMails(mailSender).stream()
+                .filter(mail -> mail.isAllMail()
+                        || (mail.getToTotal() != null && mail.getToTotal().contains(mailSender))
+                        || mail.getTo().contains(mailSender))
+                .peek(mail -> {
+                    mail.removeTrashFlag(mailSender);
+                    mailer.getMailManager().saveMail(mail);
+                })
+                .collect(Collectors.toList());
+
+        return MailsResult.of(mails, Collections.emptyList());
+    }
+
+    public MailsResult removeTrashFlagOutboxMails(MailSender mailSender) {
+        if (!available())
+            return MailsResult.empty();
+
+        List<MailData> mails = mailer.getMailManager().getTrashboxMails(mailSender).stream()
+                .filter(mail -> mail.getFrom().equals(mailSender))
+                .peek(mail -> {
+                    mail.removeTrashFlag(mailSender);
+                    mailer.getMailManager().saveMail(mail);
+                })
+                .collect(Collectors.toList());
+
+        return MailsResult.of(mails, Collections.emptyList());
+    }
+
 }

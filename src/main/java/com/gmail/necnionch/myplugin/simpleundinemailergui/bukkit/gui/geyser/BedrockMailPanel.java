@@ -308,6 +308,78 @@ public class BedrockMailPanel {
         player.sendForm(b.build());
     }
 
+    private void openTrashManagePanel() {
+        if (checkMailerLoadingWithPrompt(this::openTrashManagePanel))
+            return;
+
+        int inboxMails = 0;
+        int outboxMails = 0;
+        for (MailData mail : mailer.getMailManager().getTrashboxMails(mailSender)) {
+            if (mail.isAllMail()
+                    || (mail.getToTotal() != null && mail.getToTotal().contains(mailSender))
+                    || mail.getTo().contains(mailSender))
+                inboxMails++;
+            else if (mail.getFrom().equals(mailSender))
+                outboxMails++;
+        }
+
+        SimpleButtonForm b = SimpleButtonForm.builder(owner)
+                .title("ゴミ箱 管理")
+                .button("ゴミ箱に戻る", this::openTrashPanel);
+
+        if (MailPermission.TRASH.can(bukkitPlayer)) {
+            b.button("受信メールを全てゴミ箱から戻す\n受信メール: " + inboxMails + "通", () -> {
+                if (checkMailerLoadingWithPrompt(this::openTrashManagePanel))
+                    return;
+
+                SimpleButtonForm form = SimpleButtonForm.builder(owner).title("ゴミ箱 管理");
+
+                if (!MailPermission.TRASH.can(bukkitPlayer)) {
+                    form.content(ChatColor.RED + "ゴミ箱から戻す権限がありません");
+
+                } else {
+                    MailsResult res = mailer.removeTrashFlagInboxMails(mailSender);
+                    int done = res.getAll().size() - res.getFails().size();
+
+                    if (done <= 0) {
+                        form.content(ChatColor.RED + "ゴミ箱から戻せるメールがありませんでした");
+                    } else {
+                        form.content("受信メール " + done + "通 を復元しました");
+                        form.button("受信箱", this::openInboxPanel);
+                    }
+                }
+                form.button("メール管理", this::openTrashManagePanel);
+                player.sendForm(form.build());
+            });
+
+            b.button("送信メールを全てゴミ箱から戻す\n送信メール: " + outboxMails + "通", () -> {
+                if (checkMailerLoadingWithPrompt(this::openTrashManagePanel))
+                    return;
+
+                SimpleButtonForm form = SimpleButtonForm.builder(owner).title("ゴミ箱 管理");
+
+                if (!MailPermission.TRASH.can(bukkitPlayer)) {
+                    form.content(ChatColor.RED + "ゴミ箱から戻す権限がありません");
+
+                } else {
+                    MailsResult res = mailer.removeTrashFlagOutboxMails(mailSender);
+                    int done = res.getAll().size() - res.getFails().size();
+
+                    if (done <= 0) {
+                        form.content(ChatColor.RED + "ゴミ箱から戻せるメールがありませんでした");
+                    } else {
+                        form.content("送信メール " + done + "通 を復元しました");
+                        form.button("送信箱", this::openOutboxPanel);
+                    }
+                }
+                form.button("メール管理", this::openTrashManagePanel);
+                player.sendForm(form.build());
+            });
+        }
+
+        player.sendForm(b.build());
+    }
+
     private void openViewPanel(MailData mail) {
         if (checkMailerLoadingWithPrompt(() -> openViewPanel(mail)))
             return;
@@ -409,7 +481,7 @@ public class BedrockMailPanel {
         SimpleButtonForm b = SimpleButtonForm.builder(owner)
                 .title("ゴミ箱  " + mails.size() + "件")
                 .button("メニューに戻る", this::openMainPanel)
-                .button("メール管理", this::openTrashPanel);
+                .button("メール管理", this::openTrashManagePanel);
 
         for (MailData mail : mails) {
             b.button(StrGen.builder()
