@@ -3,10 +3,7 @@ package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.geyser;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.MailGUIPlugin;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.MainPanel;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.hooks.MailWrapper;
-import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.MailPermission;
-import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.ModalButtonForm;
-import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.SimpleButtonForm;
-import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.StrGen;
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.*;
 import com.google.common.collect.Lists;
 import net.md_5.bungee.api.ChatColor;
 import org.bitbucket.ucchy.undine.MailData;
@@ -161,20 +158,32 @@ public class BedrockMailPanel {
             if (isTrash.apply(mail))
                 trashMails++;
             if (isAttach.apply(mail))
-                attachItems += mail.getAttachments().size();
+                attachItems += mail.getAttachments().stream().mapToInt(ItemStack::getAmount).sum();
         }
 
-        SimpleButtonForm b = SimpleButtonForm.builder(owner).title("受信メール管理");
-        b.button("受信メールを全て既読にする\n未読メール: " + readMails + "通", () -> {
+        SimpleButtonForm b = SimpleButtonForm.builder(owner)
+                .title("受信メール管理")
+                .button("受信箱に戻る", this::openInboxPanel);
+
+        b.button("未読メールを全て既読にする\n未読メール: " + readMails + "通", () -> {
             if (checkMailerLoadingWithPrompt(this::openInboxManagePanel))
                 return;
 
-            int mails = mailer.setReadFlagMails(mailSender).size();
-            player.sendForm(SimpleButtonForm.builder(owner)
+            MailsResult res = mailer.setReadFlagInboxMails(mailSender);
+            int done = res.getAll().size() - res.getFails().size();
+
+            SimpleButtonForm b2 = SimpleButtonForm.builder(owner)
                     .title("受信メール管理")
-                    .content("受信メール " + mails + "通 を既読にしました")
-                    .button("メール管理", this::openInboxManagePanel)
-                    .build());
+                    .button("メール管理", this::openInboxManagePanel);
+
+            if (done > 0) {
+                b2.content("受信メール " + done + "通 を既読にしました");
+            } else if (res.getAll().isEmpty()) {
+                b2.content(ChatColor.RED + "既読にできるメールがありませんでした");
+            } else {
+                b2.content(ChatColor.RED + "既読にできるメールがありませんでした\n添付アイテムがあるメールは既読にできません");
+            }
+            player.sendForm(b2.build());
         });
 
         if (MailPermission.TRASH.can(bukkitPlayer)) {
@@ -186,19 +195,20 @@ public class BedrockMailPanel {
 
                 if (!MailPermission.TRASH.can(bukkitPlayer)) {
                     form.content(ChatColor.RED + "ゴミ箱に移動する権限がありません");
-                    form.button("メール管理", this::openInboxManagePanel);
-                    return;
-                }
 
-                int mails = mailer.setTrashFlagMails(mailSender).size();
-                form.content("既読メール " + mails + "通 をゴミ箱に移動しました");
+                } else {
+                    MailsResult res = mailer.setTrashFlagInboxMails(mailSender);
+                    int done = res.getAll().size() - res.getFails().size();
+
+                    form.content((done > 0) ? "既読メール " + done + "通 をゴミ箱に移動しました" : ChatColor.RED + "ゴミ箱に移動できるメールがありませんでした");
+                }
                 form.button("メール管理", this::openInboxManagePanel);
                 player.sendForm(form.build());
             });
         }
 
         if (checkAttachInboxPermission(bukkitPlayer)) {
-            b.button("添付アイテムを全て受け取る\n添付アイテム: " + attachItems + "個", () -> {
+            b.button("添付アイテムを全て受け取る\n受け取り可能な添付アイテム: " + attachItems + "個", () -> {
                 if (checkMailerLoadingWithPrompt(this::openInboxManagePanel))
                     return;
 
@@ -206,19 +216,28 @@ public class BedrockMailPanel {
 
                 if (!checkAttachInboxPermission(bukkitPlayer)) {
                     form.content(ChatColor.RED + "送付ボックスを開く権限がありません");
-                    form.button("メール管理", this::openInboxManagePanel);
-                }
 
-                MailWrapper.TakeAttachmentsResult result = mailer.takeAllMailAttachments(mailSender, bukkitPlayer);
-                int total = result.getAll().size();
-                int fail = result.getFails().size();
-
-                if (fail <= 0) {
-                    form.content("送付されたアイテムを全て受け取りました");
-                } else if (total == fail) {
-                    form.content(ChatColor.RED + "手持ちに空きがありません");
                 } else {
-                    form.content("送付されたアイテムを受け取りました\n" + ChatColor.YELLOW + "手持ちが一杯になったため、" + fail + "通のメールを開けませんでした");
+                    ItemMailsResult result = mailer.takeAllAttachmentsInboxMails(mailSender, bukkitPlayer.getInventory());
+                    if (!result.getAll().isEmpty()) {
+                        int doneItems = result.totalItemCount() - result.failItemCount();
+                        int openMails = result.getAll().size() - result.getFails().size();
+
+                        if (doneItems <= 0) {
+                            form.content(ChatColor.RED + "添付されたアイテムを1個も受け取れませんでした。\n手持ちに空きがないか、受け取りに支払いが必要です。\n\n失敗したメール: " + result.getFails().size() + "通");
+                        } else {
+                            StringBuilder sb = new StringBuilder("添付されたアイテムを");
+                            sb.append((result.failItemCount() <= 0) ? "全て" : "一部");
+                            sb.append("受け取りました\n\n");
+                            sb.append("受け取ったアイテム: ").append(doneItems).append("個\n");
+                            sb.append("開封したメール: ").append(openMails).append("通\n");
+                            if (result.failItemCount() > 0)
+                                sb.append(ChatColor.RED).append("失敗したメール: ").append(result.getFails().size()).append("通");
+                            form.content(sb.toString());
+                        }
+                    } else {
+                        form.content(ChatColor.RED + "添付アイテムがあるメールがありません");
+                    }
                 }
                 form.button("メール管理", this::openInboxManagePanel);
                 player.sendForm(form.build());

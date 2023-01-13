@@ -1,20 +1,23 @@
 package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.hooks;
 
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.ItemMailsResult;
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.MailsResult;
 import com.google.common.collect.Lists;
 import org.bitbucket.ucchy.undine.*;
 import org.bitbucket.ucchy.undine.bridge.VaultEcoBridge;
 import org.bitbucket.ucchy.undine.sender.MailSender;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class MailWrapper {
 
@@ -232,63 +235,97 @@ public class MailWrapper {
         return true;
     }
 
-    public List<MailData> setReadFlagMails(MailSender mailSender) {
+    /**
+     * 受信箱の未読メール全てに既読フラグを立てます<br>
+     * 添付アイテムが残っているメールは失敗に分類されます
+     */
+    public MailsResult setReadFlagInboxMails(MailSender mailSender) {
         if (!available())
-            return Collections.emptyList();
+            return MailsResult.empty();
 
         List<MailData> mails = mailer.getMailManager().getInboxMails(mailSender).stream()
-                .filter(mail -> !mail.isRead(mailSender) && (mail.getAttachments().isEmpty() || mail.isAttachmentsCancelled()))
-                .collect(Collectors.toList());
-
-        mails.forEach(mail -> {
-            mail.setReadFlag(mailSender);
-            mailer.getMailManager().saveMail(mail);
-        });
-
-        return mails;
-    }
-
-    public List<MailData> setTrashFlagMails(MailSender mailSender) {
-        if (!available())
-            return Collections.emptyList();
-
-        List<MailData> mails = mailer.getMailManager().getInboxMails(mailSender).stream()
-                .filter((mail) -> mail.getAttachments().isEmpty())
-                .collect(Collectors.toList());
-
-        mails.forEach(mail -> {
-            mail.setTrashFlag(mailSender);
-            mailer.getMailManager().saveMail(mail);
-        });
-
-        return mails;
-    }
-
-    public TakeAttachmentsResult takeAllMailAttachments(MailSender mailSender, Player player) {
-        if (!available())
-           return new TakeAttachmentsResult(Collections.emptyList(), Collections.emptyList());
-
-        List<MailData> mails = mailer.getMailManager().getInboxMails(mailSender).stream()
-                .filter((mail) -> !mail.getAttachments().isEmpty() && !mail.isAttachmentsCancelled() && mail.getCostItem() == null && mail.getCostMoney() <= 0)
+                .filter(mail -> !mail.isRead(mailSender))
                 .collect(Collectors.toList());
         List<MailData> fails = Lists.newArrayList();
 
-        PlayerInventory inv = player.getInventory();
         for (MailData mail : mails) {
+            if (mail.getAttachments().isEmpty() || mail.isAttachmentsCancelled()) {
+                mail.setReadFlag(mailSender);
+                mailer.getMailManager().saveMail(mail);
+            } else {
+                fails.add(mail);
+            }
+        }
+
+        return MailsResult.of(mails, fails);
+    }
+
+    /**
+     * 受信箱の全メールにゴミ箱フラグを立てます<br>
+     * 添付アイテムが残っている、または未読メールは失敗に分類されます
+     */
+    public MailsResult setTrashFlagInboxMails(MailSender mailSender) {
+        if (!available())
+            return MailsResult.empty();
+
+        List<MailData> mails = Lists.newArrayList(mailer.getMailManager().getInboxMails(mailSender));
+        List<MailData> fails = Lists.newArrayList();
+
+        for (MailData mail : mails) {
+            if (mail.isRead(mailSender) && mail.getAttachments().isEmpty()) {
+                mail.setTrashFlag(mailSender);
+                mailer.getMailManager().saveMail(mail);
+            } else {
+                fails.add(mail);
+            }
+        }
+
+        return MailsResult.of(mails, fails);
+    }
+
+    /**
+     * 受信箱の添付アイテムがある全メールからアイテムを inventory に移動します<br>
+     * 着払い設定があるメール、または inventory が一杯などの理由でアイテムを1個も移動できなかったメールは失敗に分類されます<br>
+     * 添付アイテムが空になったメールは既読に設定されます
+     */
+    public ItemMailsResult takeAllAttachmentsInboxMails(MailSender mailSender, Inventory inventory) {
+        if (!available())
+           return ItemMailsResult.empty();
+
+        List<MailData> mails = mailer.getMailManager().getInboxMails(mailSender).stream()
+                .filter((mail) -> !mail.getAttachments().isEmpty() && !mail.isAttachmentsCancelled())
+                .collect(Collectors.toList());
+        List<MailData> fails = Lists.newArrayList();
+        List<ItemStack> items = Lists.newArrayList();
+        List<ItemStack> failItems = Lists.newArrayList();
+
+        for (MailData mail : mails) {
+            List<ItemStack> attachments = mail.getAttachments().stream()
+                    .map(ItemStack::clone)
+                    .collect(Collectors.toList());
+
+            if (mail.getCostItem() != null || mail.getCostMoney() > 0) {
+                fails.add(mail);
+                items.addAll(attachments);
+                failItems.addAll(attachments);
+                continue;
+            }
+
             boolean changed = false;
-            for (ItemStack is : Lists.newArrayList(mail.getAttachments())) {
-                Map<Integer, ItemStack> result = inv.addItem(is);
-                if (result.isEmpty()) {
+            for (ItemStack is : attachments) {
+                items.add(is.clone());
+                Map<Integer, ItemStack> result = inventory.addItem(is.clone());
+                if (result.isEmpty()) {  // all done
                     changed = true;
                     is.setAmount(0);
                 } else {
                     for (ItemStack is2 : result.values()) {
-                        if (is.getAmount() != is2.getAmount()) {
+                        if (is.getAmount() != is2.getAmount()) {  // moved
                             changed = true;
-                            is.setAmount(is.getAmount() - is2.getAmount());
-                        } else {
-                            fails.add(mail);
+                            is.setAmount(is2.getAmount());
+//                        } else {  // all fail
                         }
+                        failItems.add(is2.clone());
                     }
                 }
             }
@@ -296,38 +333,19 @@ public class MailWrapper {
                 mail.setOpenAttachments();
                 // sort
                 Inventory fakeInv = Bukkit.createInventory(null, 54);
-                mail.getAttachments().forEach(fakeInv::addItem);
-                mail.setAttachments(Lists.newArrayList(fakeInv.getContents()));
+                fakeInv.addItem(attachments.toArray(new ItemStack[0]));
+                mail.setAttachments(Stream.of(fakeInv.getContents())
+                        .filter(is -> is != null && !Material.AIR.equals(is.getType()))
+                        .collect(Collectors.toList()));
+                if (mail.getAttachments().isEmpty())
+                    mail.setReadFlag(mailSender);
                 mailer.getMailManager().saveMail(mail);
+            } else {
+                fails.add(mail);
             }
         }
 
-        return new TakeAttachmentsResult(
-                Collections.unmodifiableList(mails),
-                Collections.unmodifiableList(fails)
-        );
+        return ItemMailsResult.of(mails, fails, items, failItems);
     }
-
-
-    public static final class TakeAttachmentsResult {
-
-        private final List<MailData> allMails;
-        private final List<MailData> fails;
-
-        public TakeAttachmentsResult(List<MailData> allMails, List<MailData> fails) {
-            this.allMails = allMails;
-            this.fails = fails;
-        }
-
-        public List<MailData> getAll() {
-            return allMails;
-        }
-
-        public List<MailData> getFails() {
-            return fails;
-        }
-
-    }
-
 
 }
