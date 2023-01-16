@@ -29,6 +29,7 @@ import org.geysermc.floodgate.api.player.FloodgatePlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -252,6 +253,15 @@ public class BedrockMailPanel {
         }
 
         f.input("見出し文", mail.getMessage().get(0));
+
+        final boolean setCost;
+        if (!mail.getAttachments().isEmpty() && config.isEnableCODMoney() && mail.getCostItem() == null) {
+            f.input("着払い金額", mail.getCostMoney() + "");
+            setCost = true;
+        } else {
+            setCost = false;
+        }
+
         player.sendForm(f.validResultHandler(r -> {
             if (checkMailerLoadingWithPrompt(this::openNewMailPanel))
                 return;
@@ -285,6 +295,24 @@ public class BedrockMailPanel {
             String line = r.asInput();
             if (line != null && !line.isEmpty())
                 mail.getMessage().set(0, line);
+
+            if (setCost) {
+                String val = Optional.ofNullable(r.asInput()).orElse("");
+                double cost;
+                try {
+                    cost = Double.parseDouble(val);
+                } catch (NumberFormatException e) {
+                    f2.content(ChatColor.RED + "着払い金額に指定されている数値が無効です");
+                    f2.button("やり直す", this::openNewMailPanel);
+                    player.sendForm(f2);
+                    return;
+                }
+
+                if (cost > 0) {
+                    mail.setCostItem(null);
+                    mail.setCostMoney(cost);
+                }
+            }
 
             if (mail.getTo().isEmpty() && mail.getToGroups().isEmpty()) {
                 f2.content(ChatColor.RED + "宛先が設定されていません");
