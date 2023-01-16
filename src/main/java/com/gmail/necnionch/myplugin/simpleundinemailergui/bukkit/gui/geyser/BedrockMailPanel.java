@@ -8,9 +8,12 @@ import com.google.common.collect.Lists;
 import net.md_5.bungee.api.ChatColor;
 import org.bitbucket.ucchy.undine.MailData;
 import org.bitbucket.ucchy.undine.Messages;
+import org.bitbucket.ucchy.undine.UndineConfig;
 import org.bitbucket.ucchy.undine.Utility;
+import org.bitbucket.ucchy.undine.group.SpecialGroupAllConnected;
 import org.bitbucket.ucchy.undine.sender.MailSender;
 import org.bitbucket.ucchy.undine.sender.MailSenderConsole;
+import org.bitbucket.ucchy.undine.sender.MailSenderPlayer;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -21,6 +24,7 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.permissions.Permissible;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.geysermc.cumulus.form.CustomForm;
 import org.geysermc.floodgate.api.player.FloodgatePlayer;
 import org.jetbrains.annotations.Nullable;
 
@@ -84,6 +88,14 @@ public class BedrockMailPanel {
 
         SimpleButtonForm form = SimpleButtonForm.builder(owner).title("メールメニュー");
         boolean activePermission = false;
+
+        if (MailPermission.WRITE.can(bukkitPlayer) && MailPermission.SEND.can(bukkitPlayer)) {
+            activePermission = true;
+            form.button("メールを書く", this::openNewMailPanel);
+
+            if (checkAttachSendMailPermission(bukkitPlayer) && checkAttachmentWorldAccess())
+                form.button("送付するアイテムを選ぶ", this::openNewMailPanelWithAttachBox);
+        }
 
         if (MailPermission.READ.can(bukkitPlayer)) {
             if (MailPermission.INBOX.can(bukkitPlayer)) {
@@ -190,6 +202,172 @@ public class BedrockMailPanel {
         }
 
         player.sendForm(b.build());
+    }
+
+    private void openNewMailPanel() {
+        if (checkMailerLoadingWithPrompt(null))
+            return;
+
+        MailData mail = mailer.getMailManager().makeEditmodeMail(mailSender);
+        UndineConfig config = mailer.getMailer().getUndineConfig();
+
+        while (mail.getMessage().size() < 3)  // MailManager.MESSAGE_ADD_SIZE
+            mail.addMessage("");
+
+        CustomForm.Builder f = CustomForm.builder();
+        f.title("新規メール");
+
+        String toName = mailer.joinToAndGroup(mail);
+        StrGen content = StrGen.builder()
+                .text(ChatColor.RED).text("送信者: ").text(ChatColor.WHITE).text(mail.getFrom().getName() + "\n")
+                .text(ChatColor.RED).text("宛先: ").text(ChatColor.WHITE).text(toName).text("\n");
+
+        if (!mail.getAttachments().isEmpty()) {
+            content.text(ChatColor.RED).text("添付アイテム: ").text("\n");
+            mail.getAttachments().forEach(item ->
+                    content.text(ChatColor.WHITE + "  " + mailer.itemDesc(item, true) + "\n"));
+
+            if (mail.getCostMoney() > 0) {
+                String costDesc = mailer.formatCostMoney(mail.getCostMoney());
+                content.text(ChatColor.GOLD + "着払い料金: ").text(ChatColor.WHITE + costDesc);
+                content.text("\n");
+            } else if (mail.getCostItem() != null) {
+                content.text(ChatColor.GOLD + "着払いアイテム: ").text(ChatColor.WHITE + mailer.itemDesc(mail.getCostItem(), true));
+                content.text("\n");
+            }
+        }
+        f.label(content.toString());
+
+        List<Player> players = Bukkit.getOnlinePlayers().stream()
+                .filter(p -> !p.equals(bukkitPlayer))
+                .collect(Collectors.toList());
+
+        boolean setTo = mail.getTo().isEmpty() && mail.getToGroups().isEmpty();
+        if (setTo) {
+            if (players.isEmpty()) {
+                f.input("宛先", "");
+            } else {
+                f.dropdown("宛先", players.stream().map(Player::getName).collect(Collectors.toList()));
+            }
+        }
+
+        f.input("見出し文", mail.getMessage().get(0));
+        player.sendForm(f.validResultHandler(r -> {
+            if (checkMailerLoadingWithPrompt(this::openNewMailPanel))
+                return;
+
+            SimpleButtonForm f2 = SimpleButtonForm.builder(owner);
+
+            if (setTo) {
+                MailSender target;
+                if (players.isEmpty()) {
+                    String name = r.asInput();
+                    target = (name == null || name.isEmpty()) ? null : MailSender.getMailSenderFromString(name);
+                } else {
+                    target = MailSenderPlayer.getMailSender(players.get(r.asDropdown()));
+                }
+
+                if (target == null || !target.isValidDestination()) {
+                    f2.content(ChatColor.RED + "宛先が見つかりませんでした");
+                    f2.button("やり直す", this::openNewMailPanel);
+                    player.sendForm(f2);
+                    return;
+                } else if (!config.isEnableSendSelf() && mailSender.equals(target)) {
+                    f2.content(ChatColor.RED + "自分自身にメールを送信することはできません");
+                    f2.button("やり直す", this::openNewMailPanel);
+                    player.sendForm(f2);
+                    return;
+                }
+
+                mail.addTo(target);
+            }
+
+            String line = r.asInput();
+            if (line != null && !line.isEmpty())
+                mail.getMessage().set(0, line);
+
+            if (mail.getTo().isEmpty() && mail.getToGroups().isEmpty()) {
+                f2.content(ChatColor.RED + "宛先が設定されていません");
+                f2.button("やり直す", this::openNewMailPanel);
+                player.sendForm(f2);
+                return;
+            }
+
+            // check spam
+            long gap = mailer.getGapWithSpamProtectionMilliSeconds(mailSender);
+            if (gap > 0) {
+                int remain = (int)(gap / 1000) + 1;
+                f2.content(ChatColor.RED + "連続してメールを送信することはできません。" + remain + "秒後に送信してください。");
+                f2.button("やり直す", this::openNewMailPanel);
+                player.sendForm(f2);
+                return;
+            }
+
+            // check attach limit
+            int attachBoxUsageCount = mailer.getMailManager().getAttachBoxUsageCount(mailSender);
+            int attachBoxMaxCount = config.getMaxAttachmentBoxCount();
+            if (!mail.getAttachments().isEmpty()
+                    && MailPermission.ATTACH_INFINITY.cannot(bukkitPlayer)
+                    && attachBoxUsageCount >= attachBoxMaxCount) {
+                f2.content(ChatColor.RED + "あなたは現在 " + attachBoxUsageCount + "個の添付ボックスを使用しており、制限数 " + attachBoxMaxCount + "を超えているため、添付付きメールを送信することはできません。");
+                f2.button("添付ボックスを開く", () -> {
+                    if (checkDeniedAttachmentWorldPrompt("閉じる", () -> {}))
+                        return;
+                    openAttachmentInventory(mail, this::openNewMailPanel);
+                });
+                player.sendForm(f2);
+                return;
+            }
+
+            // 宛先にAllConnectedが含まれていて、PlayerCacheのロードが完了していない場合は、エラーを表示して終了
+            if (mail.getToGroups().contains(SpecialGroupAllConnected.NAME)
+                    && !mailer.getMailer().isPlayerCacheLoaded()) {
+                f2.content(ChatColor.RED + "プレイヤーのキャッシュが完了していないため、AllConnected宛てメールが作成できません。しばらく待ってから送信してください。");
+                f2.button("やり直す", this::openNewMailPanel);
+                player.sendForm(f2);
+                return;
+            }
+
+            // 複数の宛先に、添付付きメールを送信しようとしたときの処理
+            if ( mail.getAttachments().size() > 0
+                    && (mail.getTo().size() > 1 || mail.getToGroups().size() > 0) ) {
+                f2.content(ChatColor.RED + "添付アイテム付きのメールを、複数の宛先に出すことはできません。");
+                f2.button("やり直す", this::openNewMailPanel);
+                f2.button("添付ボックスを開く", () -> {
+                    if (checkDeniedAttachmentWorldPrompt("閉じる", () -> {}))
+                        return;
+                    openAttachmentInventory(mail, this::openNewMailPanel);
+                });
+                player.sendForm(f2);
+                return;
+            }
+
+            // 送信にお金がかかる場合
+            double fee = mailer.getSendFee(mail);
+            if ( (mailSender instanceof MailSenderPlayer) && fee > 0 ) {
+                f2.content(ChatColor.RED + "メールの送信に課金が必要です。\n/umail send を実行して操作を続けてください。");
+                player.sendForm(f2);
+                return;
+            }
+
+            // 送信
+            mailer.getMailManager().sendNewMail(mail);
+            mailer.getMailManager().clearEditmodeMail(mailSender);
+            mailer.getMailer().getBoxManager().clearEditmodeBox(bukkitPlayer);
+
+            f2.content("メールを送信しました");
+            f2.button("送信メールを見る", () -> openViewPanel(mail));
+            f2.button("送信箱を見る", this::openOutboxPanel);
+            player.sendForm(f2);
+        }));
+    }
+
+    private void openNewMailPanelWithAttachBox() {
+        if (checkMailerLoadingWithPrompt(null))
+            return;
+
+        MailData mail = mailer.getMailManager().makeEditmodeMail(mailSender);
+        openAttachmentInventory(mail, this::openNewMailPanel);
     }
 
     // action
@@ -835,8 +1013,13 @@ public class BedrockMailPanel {
         if (checkMailerLoadingWithPrompt(null))
             return;
 
-        if (!Bukkit.dispatchCommand(bukkitPlayer, "umail attach " + mail.getIndex()) || !MailPermission.ATTACH_INBOXMAIL.can(bukkitPlayer) || !mailer.getMailer().getUndineConfig().isEnableAttachment())
+        String openCommand = "umail attach " + mail.getIndex();
+        if (mail.equals(mailer.getMailManager().getEditmodeMail(mailSender)))
+            openCommand = "umail attach";  // editing mail
+
+        if (!Bukkit.dispatchCommand(bukkitPlayer, openCommand) || !MailPermission.ATTACH_INBOXMAIL.can(bukkitPlayer) || !mailer.getMailer().getUndineConfig().isEnableAttachment())
             return;
+
         Bukkit.getPluginManager().registerEvents(new Listener() {
             @EventHandler(priority = EventPriority.LOWEST)
             public void onClose(InventoryCloseEvent event) {
@@ -879,6 +1062,10 @@ public class BedrockMailPanel {
         return true;
     }
 
+    private boolean checkAttachmentWorldAccess() {
+        return !mailer.getMailer().getUndineConfig().getDisableWorldsToOpenAttachBox().contains(mailSender.getWorldName());
+    }
+
     private boolean checkDeniedAttachmentWorldPrompt(String buttonName, Runnable click) {
         if (mailer.getMailer().getUndineConfig().getDisableWorldsToOpenAttachBox().contains(mailSender.getWorldName())) {
             player.sendForm(SimpleButtonForm.builder(owner)
@@ -888,6 +1075,10 @@ public class BedrockMailPanel {
             return true;
         }
         return false;
+    }
+
+    private boolean checkAttachSendMailPermission(Permissible permissible) {
+        return mailer.getMailer().getUndineConfig().isEnableAttachment() && MailPermission.ATTACH.can(permissible) && MailPermission.ATTACH_SENDMAIL.can(permissible);
     }
 
 }

@@ -115,6 +115,50 @@ public class MailWrapper {
         }
     }
 
+    public double getSendFee(MailData mail) {
+        if ( mailer.getVaultEco() == null ) return 0;
+        UndineConfig config = mailer.getUndineConfig();
+        if ( !config.isEnableSendFee() ) return 0;
+
+        // 添付がないなら、着払い設定をクリアする。
+        if ( mail.getAttachments().size() == 0 ) {
+            mail.setCostMoney(0);
+            mail.setCostItem(null);
+        }
+
+        double total = 0;
+        total += mail.getTo().size() * config.getSendFee();
+        if ( config.isAttachFeePerAmount() ) {
+            total += getItemAmount(mail.getAttachments()) * config.getAttachFee();
+        } else {
+            total += mail.getAttachments().size() * config.getAttachFee();
+        }
+        if ( mail.getCostMoney() > 0 ) {
+            total += (mail.getCostMoney() * config.getCodMoneyTax() / 100);
+        } else if ( mail.getCostItem() != null ) {
+            total += (mail.getCostItem().getAmount() * config.getCodItemTax());
+        }
+        return total;
+    }
+
+    public int getItemAmount(List<ItemStack> items) {
+        int total = 0;
+        for ( ItemStack item : items ) {
+            if ( item != null ) {
+                total += item.getAmount();
+            }
+        }
+        return total;
+    }
+
+    public long getGapWithSpamProtectionMilliSeconds(MailSender sender) {
+        String value = sender.getStringMetadata(MailManager.SENDTIME_METAKEY);
+        if ( value == null ) return -1;
+        long prev = Long.parseLong(value);
+        long next = prev + mailer.getUndineConfig().getMailSpamProtectionSeconds() * 1000L;
+        return next - System.currentTimeMillis();
+    }
+
     // cost util
 
     public String formatCostMoney(double cost) {

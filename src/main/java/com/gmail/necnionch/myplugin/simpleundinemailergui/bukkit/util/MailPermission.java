@@ -8,8 +8,12 @@ public enum MailPermission {
     TRASH("trash"),
     READ("read"),
     WRITE("write"),
+    SEND("send"),
     ATTACH("attach"),
-    ATTACH_INBOXMAIL("attach-inboxmail");
+    ATTACH_INBOXMAIL("attach-inboxmail"),
+    ATTACH_INFINITY("attach-infinity"),
+    ATTACH_SENDMAIL("attach-sendmail")
+    ;
 
     private final String node;
     public static final String NODE_PREFIX = "undine";
@@ -24,6 +28,10 @@ public enum MailPermission {
 
     public boolean can(Permissible permissible) {
         return permissible.hasPermission(getNode());
+    }
+
+    public boolean cannot(Permissible permissible) {
+        return !permissible.hasPermission(getNode());
     }
 
 }
