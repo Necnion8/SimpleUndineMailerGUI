@@ -46,7 +46,12 @@ public class BedrockMailPanel {
         this.mailSender = mailSender;
         this.mailer = MailGUIPlugin.getWrapper();
 
-        if (MainPanel.UIType.INBOX.equals(ui)) {
+        if (MainPanel.UIType.NEW_MAIL.equals(ui)) {
+            if (MailPermission.WRITE.can(bukkitPlayer) && MailPermission.SEND.can(bukkitPlayer)) {
+                openNewMailPanel();
+                return;
+            }
+        } else if (MainPanel.UIType.INBOX.equals(ui)) {
             if (MailPermission.INBOX.can(bukkitPlayer)) {
                 openInboxPanel();
                 return;
