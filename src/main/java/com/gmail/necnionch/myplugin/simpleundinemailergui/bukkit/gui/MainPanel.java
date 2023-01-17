@@ -4,6 +4,7 @@ import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.MailGUIPlugin;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.ui.*;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.MailPermission;
 import com.google.common.collect.ImmutableMap;
+import org.bitbucket.ucchy.undine.MailData;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -11,12 +12,14 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.permissions.Permissible;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class MainPanel extends Panel {
-    public static final UIType DEFAULT_UI = UIType.INBOX;
+    public static final UIType DEFAULT_UI = null;
+    private final UI mainPanel;
     private final NewMailUI newMail;
     private final InboxUI inbox;
     private final OutboxUI outbox;
@@ -27,29 +30,33 @@ public class MainPanel extends Panel {
         this(player, DEFAULT_UI);
     }
 
-    public MainPanel(Player player, UIType type) {
+    public MainPanel(Player player, @Nullable UIType type) {
         super(player, 54, "", new ItemStack(Material.AIR));
+        this.mainPanel = new UI(player, this);
         this.newMail = new NewMailUI(player, this);
         this.inbox = new InboxUI(player, this);
         this.outbox = new OutboxUI(player, this);
         this.trashBox = new TrashBoxUI(player, this);
 
-        switch (type) {
-            case NEW_MAIL:
-                this.currentUI = newMail;
-                break;
-            case OUTBOX:
-                this.currentUI = outbox;
-                break;
-            case TRASH_BOX:
-                this.currentUI = trashBox;
-                break;
-            case GROUPS:
-            case INBOX:
-                this.currentUI = inbox;
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown UIType: " + type.name());
+        if (type == null) {
+            this.currentUI = mainPanel;
+        } else {
+            switch (type) {
+                case NEW_MAIL:
+                    this.currentUI = newMail;
+                    break;
+                case OUTBOX:
+                    this.currentUI = outbox;
+                    break;
+                case TRASH_BOX:
+                    this.currentUI = trashBox;
+                    break;
+                case INBOX:
+                    this.currentUI = inbox;
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unknown UIType: " + type.name());
+            }
         }
     }
 
@@ -62,29 +69,13 @@ public class MainPanel extends Panel {
             return slots;
         }
 
-        slots[0] = createUIItem(newMail);
-        slots[2] = createUIItem(inbox);
-        slots[3] = createUIItem(outbox);
-        slots[4] = createUIItem(trashBox);
+        slots[0] = PanelItem.createItem(Material.OAK_DOOR, ChatColor.RED + "メインメニューに戻る")
+                .setClickListener((e, p) -> {
+                    currentUI = mainPanel;
+                    update();
+                });
 
-        slots[7] = new PanelItem((p) -> PanelItem.createItem(
-                Material.LIGHT_BLUE_DYE,
-                ((currentUI.getMaxPage() <= 0) ? ChatColor.GRAY : ChatColor.AQUA) + "前のページへ"
-        ).getItemStack(), (e, p) -> currentUI.onBackButton());
-
-        slots[8] = new PanelItem((p) -> PanelItem.createItem(
-                Material.ROSE_RED,
-                ((currentUI.getMaxPage() <= 0) ? ChatColor.GRAY : ChatColor.RED) + "次のページへ"
-        ).getItemStack(), (e, p) -> currentUI.onNextButton());
-
-        for (int i = 0; i < 9; i++) {
-            slots[9 + i] = PanelItem.createItem(Material.STONE_BUTTON, ChatColor.RESET.toString());
-        }
-
-        PanelItem[] body = new PanelItem[4 * 9];
-        currentUI.build(body);
-        System.arraycopy(body, 0, slots, 2 * 9, body.length);
-
+        currentUI.build(slots);
         return slots;
     }
 
@@ -98,6 +89,7 @@ public class MainPanel extends Panel {
 
     public void changeUI(MailUI ui) {
         this.currentUI = ui;
+        ui.resetPageIndex();
         this.update();
     }
 
@@ -109,8 +101,11 @@ public class MainPanel extends Panel {
         if (uiTitle != null)
             title += ChatColor.GRAY + " - " + ChatColor.DARK_AQUA + uiTitle;
 
-        if (currentUI.getMaxPage() > 0)
-            title += ChatColor.DARK_GRAY + " [" + ChatColor.BOLD + currentUI.getCurrentPage() + ChatColor.DARK_GRAY + "/" + ChatColor.BOLD + currentUI.getMaxPage() + ChatColor.DARK_GRAY + "]";
+        int maxPageIndex = currentUI.getMaxPageIndex();
+        int pageIndex = currentUI.getPageIndex();
+        if (maxPageIndex >= 0) {
+            title += ChatColor.DARK_GRAY + " [" + ChatColor.BOLD + (pageIndex+1) + ChatColor.DARK_GRAY + "/" + ChatColor.BOLD + (maxPageIndex+1) + ChatColor.DARK_GRAY + "]";
+        }
 
         return title;
     }
@@ -123,8 +118,8 @@ public class MainPanel extends Panel {
         NEW_MAIL("write", MailPermission.WRITE),
         INBOX("inbox", MailPermission.INBOX),
         OUTBOX("outbox", MailPermission.OUTBOX),
-        TRASH_BOX("trash", MailPermission.TRASH),
-        GROUPS("group", null);
+        TRASH_BOX("trash", MailPermission.TRASH)
+        ;
 
         private final String commandName;
         private final MailPermission permission;
@@ -138,12 +133,51 @@ public class MainPanel extends Panel {
             return commandName;
         }
 
-        public @Nullable MailPermission getPermission() {
+        public MailPermission getPermission() {
             return permission;
         }
 
         public boolean can(Permissible permissible) {
             return permission == null || permission.can(permissible);
+        }
+
+    }
+
+    public class UI extends MailUI {
+
+        private @Nullable List<MailData> mails;
+
+        public UI(Player player, Panel parent) {
+            super(player, parent);
+        }
+
+        @Override
+        public @Nullable ItemStack getIcon() {
+            return null;
+        }
+
+        @Override
+        public @Nullable String getTitle() {
+            return null;
+        }
+
+        @Override
+        public @Nullable List<MailData> getMails() {
+            return mails;
+        }
+
+        @Override
+        public void build(PanelItem[] slots) {
+            loadMails();
+            super.build(slots);
+            slots[0] = createUIItem(newMail);
+            slots[1] = createUIItem(inbox);
+            slots[2] = createUIItem(outbox);
+            slots[3] = createUIItem(trashBox);
+        }
+
+        private void loadMails() {
+            mails = mailer.getMailManager().getUnreadMails(sender);
         }
 
     }

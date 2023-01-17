@@ -2,11 +2,14 @@ package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.ui;
 
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.Panel;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.PanelItem;
+import org.bitbucket.ucchy.undine.MailData;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
 
 public class OutboxUI extends MailUI {
     public OutboxUI(Player player, Panel parent) {
@@ -19,28 +22,13 @@ public class OutboxUI extends MailUI {
     }
 
     @Override
-    public void onBackButton() {
-
-    }
-
-    @Override
-    public void onNextButton() {
-
-    }
-
-    @Override
-    public int getCurrentPage() {
-        return 0;
-    }
-
-    @Override
-    public int getMaxPage() {
-        return 0;
-    }
-
-    @Override
     public @Nullable String getTitle() {
         return "送信箱";
+    }
+
+    @Override
+    public @Nullable List<MailData> getMails() {
+        return null;
     }
 
     @Override

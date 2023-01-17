@@ -45,13 +45,12 @@ public class GUICommand implements TabExecutor {
                 return true;
             }
 
-            if (ui == null)
-                ui = MainPanel.DEFAULT_UI;
-
-            if (ui.can(sender) && MailPermission.READ.can(sender)) {
+            if (MailPermission.READ.cannot(sender)) {
+                sender.sendMessage(ChatColor.RED + "メールを見る権限がありません");
+            } else if (ui != null && ui.can(sender)) {
                 new MainPanel(player, ui).open();
             } else {
-                sender.sendMessage(ChatColor.RED + "メールを見る権限がありません");
+                new MainPanel(player, MainPanel.DEFAULT_UI).open();
             }
         }
         return true;
