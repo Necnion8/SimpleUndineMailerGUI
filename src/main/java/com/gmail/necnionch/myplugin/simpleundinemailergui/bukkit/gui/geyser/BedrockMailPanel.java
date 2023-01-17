@@ -257,11 +257,11 @@ public class BedrockMailPanel {
             }
         }
 
-        f.input("見出し文", mail.getMessage().get(0));
+        f.input("見出し文", "", mail.getMessage().get(0));
 
         final boolean setCost;
         if (!mail.getAttachments().isEmpty() && config.isEnableCODMoney() && mail.getCostItem() == null) {
-            f.input("着払い金額", mail.getCostMoney() + "");
+            f.input("着払い金額", "", mail.getCostMoney() + "");
             setCost = true;
         } else {
             setCost = false;
@@ -304,13 +304,17 @@ public class BedrockMailPanel {
             if (setCost) {
                 String val = Optional.ofNullable(r.asInput()).orElse("");
                 double cost;
-                try {
-                    cost = Double.parseDouble(val);
-                } catch (NumberFormatException e) {
-                    f2.content(ChatColor.RED + "着払い金額に指定されている数値が無効です");
-                    f2.button("やり直す", this::openNewMailPanel);
-                    player.sendForm(f2);
-                    return;
+                if (val.isEmpty()) {
+                    cost = 0;
+                } else {
+                    try {
+                        cost = Double.parseDouble(val);
+                    } catch (NumberFormatException e) {
+                        f2.content(ChatColor.RED + "着払い金額に指定されている数値が無効です");
+                        f2.button("やり直す", this::openNewMailPanel);
+                        player.sendForm(f2);
+                        return;
+                    }
                 }
 
                 if (cost > 0) {
@@ -400,7 +404,8 @@ public class BedrockMailPanel {
             return;
 
         MailData mail = mailer.getMailManager().makeEditmodeMail(mailSender);
-        openAttachmentInventory(mail, this::openNewMailPanel);
+        openAttachmentInventory(mail, () ->
+                Bukkit.getScheduler().runTaskLater(owner, this::openNewMailPanel, 1));
     }
 
     // action
