@@ -21,7 +21,6 @@ public class MainPanel extends Panel {
     private final InboxUI inbox;
     private final OutboxUI outbox;
     private final TrashBoxUI trashBox;
-    private final GroupsUI groups;
     private MailUI currentUI;
 
     public MainPanel(Player player) {
@@ -34,7 +33,6 @@ public class MainPanel extends Panel {
         this.inbox = new InboxUI(player, this);
         this.outbox = new OutboxUI(player, this);
         this.trashBox = new TrashBoxUI(player, this);
-        this.groups = new GroupsUI(player, this);
 
         switch (type) {
             case NEW_MAIL:
@@ -43,12 +41,10 @@ public class MainPanel extends Panel {
             case OUTBOX:
                 this.currentUI = outbox;
                 break;
-            case GROUPS:
-                this.currentUI = groups;
-                break;
             case TRASH_BOX:
                 this.currentUI = trashBox;
                 break;
+            case GROUPS:
             case INBOX:
                 this.currentUI = inbox;
                 break;
@@ -70,7 +66,6 @@ public class MainPanel extends Panel {
         slots[2] = createUIItem(inbox);
         slots[3] = createUIItem(outbox);
         slots[4] = createUIItem(trashBox);
-        slots[5] = createUIItem(groups);
 
         slots[7] = new PanelItem((p) -> PanelItem.createItem(
                 Material.LIGHT_BLUE_DYE,
