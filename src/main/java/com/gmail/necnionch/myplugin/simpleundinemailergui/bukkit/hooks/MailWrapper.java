@@ -1,6 +1,7 @@
 package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.hooks;
 
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.ItemMailsResult;
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.MailPermission;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.MailsResult;
 import com.google.common.collect.Lists;
 import org.bitbucket.ucchy.undine.*;
@@ -12,6 +13,7 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.permissions.Permissible;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -456,6 +458,12 @@ public class MailWrapper {
         }
 
         return ItemMailsResult.of(mails, fails, items, failItems);
+    }
+
+    // permissions
+
+    public boolean checkAttachInboxPermission(Permissible permissible) {
+        return mailer.getUndineConfig().isEnableAttachment() && MailPermission.ATTACH.can(permissible) && MailPermission.ATTACH_INBOXMAIL.can(permissible);
     }
 
 }
