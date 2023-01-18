@@ -16,10 +16,6 @@ public class InboxUI extends MailUI {
     private final MailManager mail;
     private long unread;
     private @Nullable List<MailData> mails;
-    //    private int total;
-//    private int pageIndex;
-//    private int maxPageIndex;
-//    private int openedMailId = -1;
 
     public InboxUI(Player player, Panel parent) {
         super(player, parent);
@@ -58,6 +54,16 @@ public class InboxUI extends MailUI {
         if (mails == null)
             return;
         unread = mails.stream().filter(m -> !m.isRead(sender)).count();
+    }
+
+    @Override
+    public PanelItem[] createMailMenuItems(MailData mail) {
+        PanelItem[] items = new PanelItem[4];
+        items[0] = PanelItem.createItem(Material.STONE, "1");
+        items[1] = PanelItem.createItem(Material.STONE, "2");
+        items[2] = PanelItem.createItem(Material.STONE, "3");
+        items[3] = PanelItem.createItem(Material.STONE, "4");
+        return items;
     }
 
 }

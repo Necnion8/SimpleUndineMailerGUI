@@ -35,4 +35,10 @@ public class TrashBoxUI extends MailUI {
     public void build(PanelItem[] slots) {
 
     }
+
+    @Override
+    public PanelItem[] createMailMenuItems(MailData mail) {
+        return new PanelItem[0];
+    }
+
 }

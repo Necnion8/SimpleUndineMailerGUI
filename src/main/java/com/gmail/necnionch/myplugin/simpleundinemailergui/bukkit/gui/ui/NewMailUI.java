@@ -36,4 +36,9 @@ public class NewMailUI extends MailUI {
 
     }
 
+    @Override
+    public PanelItem[] createMailMenuItems(MailData mail) {
+        return new PanelItem[0];
+    }
+
 }

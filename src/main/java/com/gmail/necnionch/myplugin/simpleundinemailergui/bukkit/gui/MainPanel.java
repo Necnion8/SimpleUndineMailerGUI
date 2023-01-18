@@ -31,7 +31,7 @@ public class MainPanel extends Panel {
     }
 
     public MainPanel(Player player, @Nullable UIType type) {
-        super(player, 54, "", new ItemStack(Material.AIR));
+        super(player, MailUI.SLOT_SIZE, "", new ItemStack(Material.AIR));
         this.mainPanel = new UI(player, this);
         this.newMail = new NewMailUI(player, this);
         this.inbox = new InboxUI(player, this);
@@ -178,6 +178,11 @@ public class MainPanel extends Panel {
 
         private void loadMails() {
             mails = mailer.getMailManager().getUnreadMails(sender);
+        }
+
+        @Override
+        public PanelItem[] createMailMenuItems(MailData mail) {
+            return new PanelItem[0];
         }
 
     }

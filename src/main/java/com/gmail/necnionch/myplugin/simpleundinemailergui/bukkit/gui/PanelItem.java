@@ -2,11 +2,13 @@ package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -70,23 +72,23 @@ public class PanelItem {
 
 
     public static PanelItem createItem(Material material, String name) {
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(name);
-            meta.addItemFlags(ItemFlag.values());
-            item.setItemMeta(meta);
-        }
-        return new PanelItem(item);
+        return PanelItem.createItem(material, name, null, false);
     }
 
 
-    public static PanelItem createItem(Material material, String name, List<String> loreLines) {
+    public static PanelItem createItem(Material material, String name, @Nullable List<String> loreLines) {
+        return PanelItem.createItem(material, name, loreLines, false);
+    }
+
+    public static PanelItem createItem(Material material, String name, @Nullable List<String> loreLines, boolean glowing) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(name);
-            meta.setLore(loreLines);
+            if (loreLines != null)
+                meta.setLore(loreLines);
+            if (glowing)
+                meta.addEnchant(Enchantment.DURABILITY, 1, false);
             meta.addItemFlags(ItemFlag.values());
             item.setItemMeta(meta);
         }
