@@ -53,8 +53,8 @@ public class MailWrapper {
 
     public String summarySubstring(String line) {
         line = Utility.removeColorCode(line);
-        if (line.length() > 47)
-            return line.substring(0, 45) + "..";
+        if (line.length() > 27)
+            return line.substring(0, 25) + "..";
         return line;
     }
 

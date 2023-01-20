@@ -109,9 +109,9 @@ public class InboxUI extends MailUI {
                     .setClickListener(() -> onAttachOpenButton(mail)));
 
         } else if (mail.getCostMoney() > 0) {
-            lines = Lists.newArrayList(ChatColor.YELLOW + "受け取るには着払い料金を支払う必要があります");
+            lines = Lists.newArrayList(ChatColor.YELLOW + "開くには着払い料金を支払う必要があります");
             if (mailer.isDisabledAttachmentWorld(sender)) {
-                lines.add(ChatColor.RED + "別のワールドに移動してから添付ボックスを開いてください。");
+                lines.add(ChatColor.RED + "(注) 現在のワールドでは添付ボックスを開けません。");
             }
             lines.addAll(attachLines);
             items.add(PanelItem.createItem(Material.CHEST, ChatColor.GOLD + "添付ボックスを開く", lines)
@@ -128,9 +128,9 @@ public class InboxUI extends MailUI {
                     .setClickListener(() -> onAttachCostMoneyAcceptButton(mail)));
 
         } else if (mail.getCostItem() != null) {
-            lines = Lists.newArrayList(ChatColor.YELLOW + "受け取るには着払いアイテムを支払う必要があります");
+            lines = Lists.newArrayList(ChatColor.YELLOW + "開くには着払いアイテムを支払う必要があります");
             if (mailer.isDisabledAttachmentWorld(sender)) {
-                lines.add(ChatColor.RED + "別のワールドに移動してから添付ボックスを開いてください。");
+                lines.add(ChatColor.RED + "(注) 現在のワールドでは添付ボックスを開けません。");
             }
             lines.addAll(attachLines);
             items.add(PanelItem.createItem(Material.CHEST, ChatColor.GOLD + "添付ボックスを開く", lines)
