@@ -33,7 +33,7 @@ public class InboxUI extends MailUI {
         String name = ChatColor.GOLD + "受信箱";
         if (unread > 0)
             name += ChatColor.GRAY + " (未読 " + unread + "通)";
-        return PanelItem.createItem(Material.DROPPER, name).getItemStack();
+        return PanelItem.createItem(Material.DROPPER, name, null, unread > 0).getItemStack();
     }
 
     @Override
