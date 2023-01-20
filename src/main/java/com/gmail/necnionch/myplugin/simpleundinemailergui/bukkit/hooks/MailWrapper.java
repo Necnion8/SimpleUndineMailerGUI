@@ -1,5 +1,6 @@
 package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.hooks;
 
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.MailGUIPlugin;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.ItemMailsResult;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.MailPermission;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.MailsResult;
@@ -11,9 +12,16 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
+import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.permissions.Permissible;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.Nullable;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -22,7 +30,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class MailWrapper {
-
+    private final MailGUIPlugin owner = JavaPlugin.getPlugin(MailGUIPlugin.class);
     private final UndineMailer mailer;
 
     public MailWrapper() {
@@ -460,10 +468,37 @@ public class MailWrapper {
         return ItemMailsResult.of(mails, fails, items, failItems);
     }
 
+    public boolean openAttachmentInventory(MailSender sender, MailData mail, @Nullable Runnable close) {
+        if (!available())
+            return false;
+
+        String openCommand = "umail attach " + mail.getIndex();
+        if (mail.equals(mailer.getMailManager().getEditmodeMail(sender)))
+            openCommand = "umail attach";  // editing mail
+
+        if (!Bukkit.dispatchCommand(sender.getPlayer(), openCommand) || !MailPermission.ATTACH_INBOXMAIL.can(sender.getPlayer()) || !mailer.getUndineConfig().isEnableAttachment())
+            return false;
+
+        Bukkit.getPluginManager().registerEvents(new Listener() {
+            @EventHandler(priority = EventPriority.LOWEST)
+            public void onClose(InventoryCloseEvent event) {
+                HandlerList.unregisterAll(this);
+                if (close != null) {
+                    Bukkit.getScheduler().scheduleSyncDelayedTask(owner, close, 0);
+                }
+            }
+        }, owner);
+        return true;
+    }
+
     // permissions
 
     public boolean checkAttachInboxPermission(Permissible permissible) {
         return mailer.getUndineConfig().isEnableAttachment() && MailPermission.ATTACH.can(permissible) && MailPermission.ATTACH_INBOXMAIL.can(permissible);
+    }
+
+    public boolean isDisabledAttachmentWorld(MailSender sender) {
+        return mailer.getUndineConfig().getDisableWorldsToOpenAttachBox().contains(sender.getWorldName());
     }
 
 }

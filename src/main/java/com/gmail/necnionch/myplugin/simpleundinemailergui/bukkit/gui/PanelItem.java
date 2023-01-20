@@ -40,6 +40,14 @@ public class PanelItem {
         return this;
     }
 
+    public PanelItem setClickListener(Runnable onClickLeft) {
+        this.clickListener = (event, player) -> {
+            if (event.getClick().isLeftClick())
+                onClickLeft.run();
+        };
+        return this;
+    }
+
     public PanelItem setItemBuilder(ItemBuilder itemBuilder) {
         this.itemBuilder = itemBuilder;
         return this;

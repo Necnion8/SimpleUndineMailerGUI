@@ -182,9 +182,13 @@ public class MainPanel extends Panel {
 
         @Override
         public PanelItem[] createMailMenuItems(MailData mail) {
-            return new PanelItem[0];
+            return null;
         }
 
+        @Override
+        public PanelItem createMailItem(MailData mail) {
+            return this.createMailItem(mail, false);
+        }
     }
 
 }

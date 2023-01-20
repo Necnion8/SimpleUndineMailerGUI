@@ -83,6 +83,11 @@ public abstract class Panel {
         placeItems(build());
     }
 
+    public void refresh() {
+        if (cachedItems != null)
+            placeItems(cachedItems);
+    }
+
     public void destroy(boolean close) {
         HandlerList.unregisterAll(listener);
 

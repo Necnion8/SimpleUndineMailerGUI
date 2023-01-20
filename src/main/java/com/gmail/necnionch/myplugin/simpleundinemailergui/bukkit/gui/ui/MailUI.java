@@ -54,6 +54,14 @@ public abstract class MailUI {
         parent.update();
     }
 
+    protected void refresh() {
+        parent.refresh();
+    }
+
+    protected void open() {
+        parent.open();
+    }
+
     @Nullable
     public abstract ItemStack getIcon();
 
@@ -64,6 +72,10 @@ public abstract class MailUI {
     public abstract @Nullable List<MailData> getMails();
 
     public PanelItem createMailItem(MailData mail) {
+        return this.createMailItem(mail, true);
+    }
+
+    public PanelItem createMailItem(MailData mail, boolean clickToView) {
         boolean selected = mail.equals(selectedMail);
         boolean unread = !mail.isRead(sender);
         Material material = selected ? Material.FILLED_MAP : (unread ? Material.MAP : Material.PAPER);
@@ -114,8 +126,10 @@ public abstract class MailUI {
                         .forEachOrdered(lines::add);
 
                 if (mail.getCostMoney() > 0) {
+                    lines.add("");
                     lines.add(ChatColor.GOLD + "着払い料金: " + ChatColor.WHITE + mailer.formatCostMoney(mail.getCostMoney()));
                 } else if (mail.getCostItem() != null) {
+                    lines.add("");
                     lines.add(ChatColor.GOLD + "着払いアイテム: " + ChatColor.WHITE + mailer.itemDesc(mail.getCostItem(), true));
                 }
             }
@@ -130,16 +144,30 @@ public abstract class MailUI {
             }
         }
 
+        if (!clickToView) {
+            return PanelItem.createItem(material, lines.remove(0), lines);
+        }
+
         lines.add("");
         lines.add(ChatColor.YELLOW + (selected ? "(クリックで閉じる)" : "(クリックで開く)"));
 
         return PanelItem.createItem(material, lines.remove(0), lines).setClickListener((e, p) -> {
             if (mail.equals(selectedMail)) {
                 selectedMail = null;
+                if (!mail.isRead(sender) && (mail.getAttachments().size() == 0 || mail.isAttachmentsCancelled())) {
+                    mail.setReadFlag(sender);
+                    mailer.getMailManager().saveMail(mail);
+                }
+                this.update();
             } else {
                 selectedMail = mail;
+                this.update();
+                if (!mail.isRead(sender) && (mail.getAttachments().size() == 0 || mail.isAttachmentsCancelled())) {
+                    mail.setReadFlag(sender);
+                    mailer.getMailManager().saveMail(mail);
+                }
             }
-            this.update();
+
         });
     }
 
@@ -184,15 +212,18 @@ public abstract class MailUI {
                 int uiRowSize = UI_SIZE / 9;
                 // 選択された行がスロット1行目以下ならメニューを選択された行の下の行にする
                 int menuRowIndex = (rowIndex <= uiRowSize) ? rowIndex + 1 : rowIndex - 1;
-                // UIスロットと選択スロット以外を空に
-                for (int i = 0; i < SLOT_SIZE - UI_SIZE; i++) {
-                    if (UI_SIZE + i != selectedMailSlotIndex) {
-                        slots[UI_SIZE + i] = null;
+
+                PanelItem[] menu = createMailMenuItems(selectedMail);
+                if (menu != null) {
+                    // UIスロットと選択スロット以外を空に
+                    for (int i = 0; i < SLOT_SIZE - UI_SIZE; i++) {
+                        if (UI_SIZE + i != selectedMailSlotIndex) {
+                            slots[UI_SIZE + i] = null;
+                        }
                     }
                 }
 
-                PanelItem[] menu = createMailMenuItems(selectedMail);
-                if (menu.length > 0) {
+                if (menu != null && menu.length > 0) {
                     if (menu.length > 9)
                         throw new IllegalArgumentException("createMailMenuItems.length >= 9");
                     // メニューを埋める
@@ -235,6 +266,6 @@ public abstract class MailUI {
         return selectedMail;
     }
 
-    public abstract PanelItem[] createMailMenuItems(MailData mail);
+    public abstract @Nullable PanelItem[] createMailMenuItems(MailData mail);
 
 }
