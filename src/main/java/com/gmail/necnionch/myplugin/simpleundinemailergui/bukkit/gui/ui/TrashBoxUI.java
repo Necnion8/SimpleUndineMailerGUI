@@ -21,11 +21,15 @@ public class TrashBoxUI extends MailUI {
 
     public TrashBoxUI(Player player, Panel parent) {
         super(player, parent);
+        loadMails();
     }
 
     @Override
     public ItemStack getIcon() {
-        return PanelItem.createItem(Material.CACTUS, ChatColor.GOLD + "ゴミ箱").getItemStack();
+        String name = ChatColor.GOLD + "ゴミ箱";
+        if (mails != null)
+            name += ChatColor.GRAY + " (" + mails.size() + ")";
+        return PanelItem.createItem(Material.CACTUS, name).getItemStack();
     }
 
     @Override

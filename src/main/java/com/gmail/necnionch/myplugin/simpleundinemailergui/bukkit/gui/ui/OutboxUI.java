@@ -25,6 +25,8 @@ public class OutboxUI extends MailUI {
     @Override
     public ItemStack getIcon() {
         String name = ChatColor.GOLD + "送信箱";
+        if (mails != null)
+            name += ChatColor.GRAY + " (" + mails.size() + ")";
         return PanelItem.createItem(Material.DISPENSER, name).getItemStack();
     }
 
