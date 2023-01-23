@@ -3,7 +3,9 @@ package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.ui;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.MailGUIPlugin;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.Panel;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.PanelItem;
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.ItemMailsResult;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.MailPermission;
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.MailsResult;
 import com.google.common.collect.Lists;
 import org.bitbucket.ucchy.undine.MailData;
 import org.bitbucket.ucchy.undine.MailManager;
@@ -50,6 +52,38 @@ public class InboxUI extends MailUI {
     public void build(PanelItem[] slots) {
         loadInbox();
         super.build(slots);
+
+        if (mails == null)
+            return;
+
+        int read = 0;
+        int trash = 0;
+        int attachItems = 0;
+        for (MailData mail : mails) {
+            if (!mail.isRead(sender) && (mail.getAttachments().isEmpty() || mail.isAttachmentsCancelled()))
+                read++;
+            if (mail.isRead(sender) && mail.getAttachments().isEmpty())
+                trash++;
+            if (!mail.getAttachments().isEmpty() && !mail.isAttachmentsCancelled() && mail.getCostItem() == null && mail.getCostMoney() <= 0)
+                attachItems += mail.getAttachments().stream().mapToInt(ItemStack::getAmount).sum();
+        }
+
+        List<String> lore = Lists.newArrayList(ChatColor.GRAY + "未読メール: " + read + "通");
+        slots[3] = PanelItem.createItem(Material.FEATHER, ChatColor.GOLD + "未読メールを全て既読にする", lore)
+                .setClickListener(this::onReadAllButton);
+
+        if (MailPermission.TRASH.can(player)) {
+            lore = Lists.newArrayList(ChatColor.GRAY + "既読メール: " + trash + "通");
+            slots[4] = PanelItem.createItem(Material.CACTUS, ChatColor.RED + "既読メールを全てゴミ箱に移動する", lore)
+                    .setClickListener(this::onTrashAllButton);
+        }
+
+        if (mailer.checkAttachInboxPermission(player) && !mailer.isDisabledAttachmentWorld(sender)) {
+            lore = Lists.newArrayList(ChatColor.GRAY + "受け取り可能な添付アイテム: " + attachItems + "個");
+            slots[5] = PanelItem.createItem(Material.CHEST, ChatColor.GOLD + "添付アイテムを全て受け取る", lore)
+                    .setClickListener(this::onAttachAllButton);
+        }
+
     }
 
 
@@ -257,6 +291,63 @@ public class InboxUI extends MailUI {
 
             // 受信者側に、拒否した該当メールの詳細画面を開く
             player.sendMessage("アイテムの受け取りを拒否し、送信者へ返送メールを送信しました。");
+        }
+        update();
+    }
+
+    private void onReadAllButton() {
+        if (!MailGUIPlugin.getWrapper().available())
+            return;
+
+        MailsResult res = mailer.setReadFlagInboxMails(sender);
+        int done = res.getAll().size() - res.getFails().size();
+
+        if (done > 0) {
+            player.sendMessage(ChatColor.GOLD + "受信メール " + done + "通 を既読にしました");
+        } else if (!res.getAll().isEmpty()) {
+            player.sendMessage(ChatColor.RED + "既読にできるメールがありませんでした\n添付アイテムがあるメールは既読にできません");
+        }
+        update();
+    }
+
+    private void onTrashAllButton() {
+        if (!MailGUIPlugin.getWrapper().available())
+            return;
+        if (MailPermission.TRASH.cannot(player))
+            return;
+
+        MailsResult res = mailer.setTrashFlagInboxMails(sender);
+        int done = res.getAll().size() - res.getFails().size();
+
+        if (done > 0) {
+            player.sendMessage(ChatColor.GOLD + "既読メール " + done + "通 をゴミ箱に移動しました");
+        }
+        update();
+    }
+
+    private void onAttachAllButton() {
+        if (!MailGUIPlugin.getWrapper().available())
+            return;
+        if (!mailer.checkAttachInboxPermission(player) || mailer.isDisabledAttachmentWorld(sender))
+            return;
+
+        ItemMailsResult result = mailer.takeAllAttachmentsInboxMails(sender, player.getInventory());
+        if (!result.getAll().isEmpty()) {
+            int doneItems = result.totalItemCount() - result.failItemCount();
+            int openMails = result.getAll().size() - result.getFails().size();
+
+            if (doneItems <= 0) {
+                player.sendMessage(ChatColor.RED + "添付されたアイテムを1個も受け取れませんでした。\n手持ちに空きがないか、受け取りに支払いが必要です。\n\n  失敗したメール: " + result.getFails().size() + "通");
+            } else {
+                StringBuilder sb = new StringBuilder(ChatColor.GOLD.toString()).append("添付されたアイテムを");
+                sb.append((result.failItemCount() <= 0) ? "全て" : "一部").append(ChatColor.WHITE);
+                sb.append("  受け取りました\n\n");
+                sb.append("  受け取ったアイテム: ").append(doneItems).append("個\n");
+                sb.append("  開封したメール: ").append(openMails).append("通\n");
+                if (result.failItemCount() > 0)
+                    sb.append(ChatColor.RED).append("  失敗したメール: ").append(result.getFails().size()).append("通");
+                player.sendMessage(sb.toString());
+            }
         }
         update();
     }
