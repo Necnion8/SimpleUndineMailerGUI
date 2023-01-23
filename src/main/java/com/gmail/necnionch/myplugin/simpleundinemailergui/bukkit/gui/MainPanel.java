@@ -25,6 +25,7 @@ public class MainPanel extends Panel {
     private final OutboxUI outbox;
     private final TrashBoxUI trashBox;
     private MailUI currentUI;
+    private Runnable fallbackPanel;
 
     public MainPanel(Player player) {
         this(player, DEFAULT_UI);
@@ -60,16 +61,25 @@ public class MainPanel extends Panel {
         }
     }
 
+    public MainPanel setFallbackPanel(Runnable open) {
+        fallbackPanel = open;
+        return this;
+    }
+
     @Override
     public PanelItem[] build() {
         PanelItem[] slots = new PanelItem[getSize()];
+
+        if (fallbackPanel != null) {
+            slots[0] = createFallbackPanelItem();
+        }
 
         if (!MailGUIPlugin.getWrapper().available()) {
             slots[22] = PanelItem.createItem(Material.BARRIER, ChatColor.RED + "現在メールプラグインを利用できません");
             return slots;
         }
 
-        slots[0] = PanelItem.createItem(Material.OAK_DOOR, ChatColor.RED + "メインメニューに戻る")
+        slots[0] = PanelItem.createItem(Material.OAK_DOOR, ChatColor.RED + "メールメニューに戻る")
                 .setClickListener((e, p) -> {
                     currentUI = mainPanel;
                     update();
@@ -91,6 +101,10 @@ public class MainPanel extends Panel {
         this.currentUI = ui;
         ui.resetPageIndex();
         this.update();
+    }
+
+    private PanelItem createFallbackPanelItem() {
+        return PanelItem.createItem(Material.ACACIA_DOOR, ChatColor.GOLD + "メインページに戻る").setClickListener(fallbackPanel);
     }
 
     @Override
@@ -170,10 +184,15 @@ public class MainPanel extends Panel {
         public void build(PanelItem[] slots) {
             loadMails();
             super.build(slots);
-            slots[0] = createUIItem(newMail);
-            slots[1] = createUIItem(inbox);
-            slots[2] = createUIItem(outbox);
-            slots[3] = createUIItem(trashBox);
+            int idx = 0;
+
+            if (fallbackPanel != null)
+                slots[idx++] = createFallbackPanelItem();
+
+            slots[idx++] = createUIItem(newMail);
+            slots[idx++] = createUIItem(inbox);
+            slots[idx++] = createUIItem(outbox);
+            slots[idx] = createUIItem(trashBox);
         }
 
         private void loadMails() {

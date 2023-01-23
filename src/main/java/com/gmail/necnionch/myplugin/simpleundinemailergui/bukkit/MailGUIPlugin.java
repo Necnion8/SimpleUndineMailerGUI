@@ -2,6 +2,7 @@ package com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit;
 
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.commands.GUICommand;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.Panel;
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.hooks.InfoGUIBridge;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.hooks.MailWrapper;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.geysermc.floodgate.api.FloodgateApi;
@@ -17,6 +18,7 @@ public final class MailGUIPlugin extends JavaPlugin {
     private static boolean enabled;
     private MailWrapper mailWrapper;
     private boolean enabledFloodgate;
+    private InfoGUIBridge infoGUI = new InfoGUIBridge(this);
 
     @Override
     public void onEnable() {
@@ -27,12 +29,14 @@ public final class MailGUIPlugin extends JavaPlugin {
 
         mailWrapper = new MailWrapper();
         enabledFloodgate = getServer().getPluginManager().isPluginEnabled("floodgate");
+        infoGUI.hook();
     }
 
     @Override
     public void onDisable() {
         enabled = false;
         Panel.destroyAll();
+        infoGUI.unhook();
     }
 
     public static MailWrapper getWrapper() {
