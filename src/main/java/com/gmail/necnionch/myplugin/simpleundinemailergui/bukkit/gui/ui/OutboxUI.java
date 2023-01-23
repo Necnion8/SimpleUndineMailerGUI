@@ -4,6 +4,7 @@ import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.MailGUIPlugin;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.Panel;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.PanelItem;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.MailPermission;
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.MailsResult;
 import com.google.common.collect.Lists;
 import org.bitbucket.ucchy.undine.MailData;
 import org.bukkit.ChatColor;
@@ -41,6 +42,17 @@ public class OutboxUI extends MailUI {
     public void build(PanelItem[] slots) {
         loadMails();
         super.build(slots);
+
+        if (mails == null || MailPermission.TRASH.cannot(player))
+            return;
+
+        long total = mails.stream()
+                .filter(mail -> mail.getAttachments().isEmpty())
+                .count();
+
+        List<String> lore = Lists.newArrayList(ChatColor.GRAY + "送信メール: " + total + "通");
+        slots[4] = PanelItem.createItem(Material.CACTUS, ChatColor.RED + "送信メールを全てゴミ箱に移動する", lore)
+                .setClickListener(this::onTrashAllButton);
     }
 
     @Override
@@ -119,6 +131,27 @@ public class OutboxUI extends MailUI {
 
         mail.cancelAttachments();
         mailer.getMailManager().saveMail(mail);
+        update();
+    }
+
+    private void onTrashAllButton() {
+        if (!MailGUIPlugin.getWrapper().available())
+            return;
+        if (MailPermission.TRASH.cannot(player))
+            return;
+
+        MailsResult res = mailer.setTrashFlagOutboxMails(sender);
+        int done = res.getAll().size() - res.getFails().size();
+
+        if (res.getAll().isEmpty())
+            return;
+
+        if (done <= 0) {
+            player.sendMessage(ChatColor.RED + "ゴミ箱に移動できるメールがありませんでした\n添付アイテムが残っているメールはゴミ箱に移動できません");
+        } else {
+            player.sendMessage(ChatColor.GOLD + "送信メール " + done + "通 をゴミ箱に移動しました");
+        }
+        update();
     }
 
 }
