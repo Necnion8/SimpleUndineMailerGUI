@@ -803,6 +803,8 @@ public class BedrockMailPanel {
             b.button("添付アイテムを全て受け取る\n受け取り可能な添付アイテム: " + attachItems + "個", () -> {
                 if (checkMailerLoadingWithPrompt(this::openInboxManagePanel))
                     return;
+                if (checkDeniedAttachmentWorldPrompt("メール管理", this::openInboxManagePanel))
+                    return;
 
                 SimpleButtonForm form = SimpleButtonForm.builder(owner).title("受信メール管理");
 
