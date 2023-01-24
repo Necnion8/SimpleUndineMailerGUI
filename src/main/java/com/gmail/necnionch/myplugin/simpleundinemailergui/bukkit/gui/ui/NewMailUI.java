@@ -193,12 +193,11 @@ public class NewMailUI extends MailUI {
             return;
         if (mail.getAttachments().isEmpty() || mail.getCostItem() != null && !mailer.getMailer().getUndineConfig().isEnableCODMoney())
             return;
-
         new AnvilGUI.Builder()
                 .plugin(plugin)
                 .title(Optional.ofNullable(title).orElse("金額を入力"))
                 .itemLeft(new ItemStack(Material.WRITABLE_BOOK))
-                .text("" + mail.getCostMoney())
+                .text(String.valueOf(mail.getCostMoney()).replaceFirst("\\.0$", ""))
                 .onComplete((comp) -> {
                     double cost;
                     String input = comp.getText();

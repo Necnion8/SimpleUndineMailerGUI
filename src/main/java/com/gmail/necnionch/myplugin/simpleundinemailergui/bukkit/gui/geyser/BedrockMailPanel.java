@@ -261,7 +261,7 @@ public class BedrockMailPanel {
 
         final boolean setCost;
         if (!mail.getAttachments().isEmpty() && config.isEnableCODMoney() && mail.getCostItem() == null) {
-            f.input("着払い金額", "", mail.getCostMoney() + "");
+            f.input("着払い金額", "", String.valueOf(mail.getCostMoney()).replaceFirst("\\.0$", ""));
             setCost = true;
         } else {
             setCost = false;
