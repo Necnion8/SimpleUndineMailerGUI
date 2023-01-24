@@ -331,6 +331,7 @@ public class NewMailUI extends MailUI {
                         .setItemBuilder((p) -> {
                             ItemStack itemStack = new ItemStack(Material.PLAYER_HEAD);
                             SkullMeta meta = Objects.requireNonNull((SkullMeta) itemStack.getItemMeta());
+                            meta.setDisplayName(ChatColor.AQUA + player.getName());
                             meta.setOwningPlayer(player);
                             itemStack.setItemMeta(meta);
                             return itemStack;
@@ -338,7 +339,7 @@ public class NewMailUI extends MailUI {
                         .setClickListener(() -> {
                             MailData mail = mailer.getMailManager().getEditmodeMail(sender);
                             if (mail != null) {
-                                mail.addTo(MailSender.getMailSender(player));
+                                mail.setTo(0, MailSender.getMailSender(player));
                             }
                             NewMailUI.this.open();
                         });
