@@ -497,6 +497,10 @@ public class MailWrapper {
         return mailer.getUndineConfig().isEnableAttachment() && MailPermission.ATTACH.can(permissible) && MailPermission.ATTACH_INBOXMAIL.can(permissible);
     }
 
+    public boolean checkAttachSendMailPermission(Permissible permissible) {
+        return mailer.getUndineConfig().isEnableAttachment() && MailPermission.ATTACH.can(permissible) && MailPermission.ATTACH_SENDMAIL.can(permissible);
+    }
+
     public boolean isDisabledAttachmentWorld(MailSender sender) {
         return mailer.getUndineConfig().getDisableWorldsToOpenAttachBox().contains(sender.getWorldName());
     }
