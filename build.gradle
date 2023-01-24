@@ -19,6 +19,22 @@ repositories {
         name = "opencollab-snapshot"
         url = "https://repo.opencollab.dev/maven-snapshots/"
     }
+    maven {
+        name = "codemc-snapshots"
+        url = "https://repo.codemc.io/repository/maven-snapshots/"
+    }
+}
+
+configurations {
+    collectJars
+}
+
+jar {
+    from {
+        configurations.collectJars.collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
 }
 
 dependencies {
@@ -27,6 +43,8 @@ dependencies {
     implementation files("libs/UndineMailer.jar")
     implementation files("libs/LOInfoGUI-1.0.0.jar")
     implementation "org.geysermc.floodgate:api:2.2.0-SNAPSHOT"
+    implementation "net.wesjd:anvilgui:1.6.3-SNAPSHOT"
+    collectJars "net.wesjd:anvilgui:1.6.3-SNAPSHOT"
 }
 
 def targetJavaVersion = 8
