@@ -39,21 +39,24 @@ public class MainPanel extends Panel {
         this.outbox = new OutboxUI(player, this);
         this.trashBox = new TrashBoxUI(player, this);
 
-        if (type == null) {
-            this.currentUI = mainPanel;
-        } else {
+        this.currentUI = mainPanel;
+        if (type != null) {
             switch (type) {
                 case NEW_MAIL:
-                    this.currentUI = newMail;
+                    if (MailPermission.WRITE.can(player) && MailPermission.SEND.can(player))
+                        this.currentUI = newMail;
                     break;
                 case OUTBOX:
-                    this.currentUI = outbox;
+                    if (MailPermission.OUTBOX.can(player))
+                        this.currentUI = outbox;
                     break;
                 case TRASH_BOX:
-                    this.currentUI = trashBox;
+                    if (MailPermission.TRASH.can(player))
+                        this.currentUI = trashBox;
                     break;
                 case INBOX:
-                    this.currentUI = inbox;
+                    if (MailPermission.INBOX.can(player))
+                        this.currentUI = inbox;
                     break;
                 default:
                     throw new IllegalArgumentException("Unknown UIType: " + type.name());
@@ -189,10 +192,14 @@ public class MainPanel extends Panel {
             if (fallbackPanel != null)
                 slots[idx++] = createFallbackPanelItem();
 
-            slots[idx++] = createUIItem(newMail);
-            slots[idx++] = createUIItem(inbox);
-            slots[idx++] = createUIItem(outbox);
-            slots[idx] = createUIItem(trashBox);
+            if (MailPermission.WRITE.can(player) && MailPermission.SEND.can(player))
+                slots[idx++] = createUIItem(newMail);
+            if (MailPermission.INBOX.can(player))
+                slots[idx++] = createUIItem(inbox);
+            if (MailPermission.OUTBOX.can(player))
+                slots[idx++] = createUIItem(outbox);
+            if (MailPermission.TRASH.can(player))
+                slots[idx] = createUIItem(trashBox);
         }
 
         private void loadMails() {
