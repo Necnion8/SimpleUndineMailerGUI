@@ -99,7 +99,7 @@ public class BedrockMailPanel {
             activePermission = true;
             form.button("メールを書く", this::openNewMailPanel);
 
-            if (checkAttachSendMailPermission(bukkitPlayer) && checkAttachmentWorldAccess())
+            if (mailer.checkAttachSendMailPermission(bukkitPlayer) && !mailer.isDisabledAttachmentWorld(mailSender))
                 form.button("送付するアイテムを選ぶ", this::openNewMailPanelWithAttachBox);
         }
 
@@ -470,7 +470,7 @@ public class BedrockMailPanel {
 
         boolean refuseButton = true;
 
-        if (!checkAttachInboxPermission(bukkitPlayer)) {
+        if (!mailer.checkAttachInboxPermission(bukkitPlayer)) {
             refuseButton = false;
             b.content(ChatColor.RED + "添付ボックスを開く権限がありません");
 
@@ -597,7 +597,7 @@ public class BedrockMailPanel {
 
         if (!mail.getAttachments().isEmpty()) {
             if (mail.isAttachmentsCancelled()) {
-                if (!checkAttachInboxPermission(bukkitPlayer)) {
+                if (!mailer.checkAttachInboxPermission(bukkitPlayer)) {
                     b.content(ChatColor.RED + "添付ボックスを開く権限がありません");
                 } else {
                     b.button("添付ボックスを開く", () -> {
@@ -611,7 +611,7 @@ public class BedrockMailPanel {
                 }
 
             } else if (!mail.isAttachmentsOpened()) {
-                if (!checkAttachInboxPermission(bukkitPlayer)) {
+                if (!mailer.checkAttachInboxPermission(bukkitPlayer)) {
                     b.content(ChatColor.RED + "添付ボックスを開く権限がありません");
                 } else {
                     b.button("添付アイテムをキャンセルする", () -> {
@@ -799,7 +799,7 @@ public class BedrockMailPanel {
             });
         }
 
-        if (checkAttachInboxPermission(bukkitPlayer)) {
+        if (mailer.checkAttachInboxPermission(bukkitPlayer)) {
             b.button("添付アイテムを全て受け取る\n受け取り可能な添付アイテム: " + attachItems + "個", () -> {
                 if (checkMailerLoadingWithPrompt(this::openInboxManagePanel))
                     return;
@@ -808,7 +808,7 @@ public class BedrockMailPanel {
 
                 SimpleButtonForm form = SimpleButtonForm.builder(owner).title("受信メール管理");
 
-                if (!checkAttachInboxPermission(bukkitPlayer)) {
+                if (!mailer.checkAttachInboxPermission(bukkitPlayer)) {
                     form.content(ChatColor.RED + "添付ボックスを開く権限がありません");
 
                 } else {
@@ -1087,12 +1087,8 @@ public class BedrockMailPanel {
         return true;
     }
 
-    private boolean checkAttachInboxPermission(Permissible permissible) {
-        return mailer.getMailer().getUndineConfig().isEnableAttachment() && MailPermission.ATTACH.can(permissible) && MailPermission.ATTACH_INBOXMAIL.can(permissible);
-    }
-
     private boolean checkDeniedAttachInboxPermissionPrompt(Permissible permissible, String buttonName, Runnable close) {
-        if (checkAttachInboxPermission(permissible))
+        if (mailer.checkAttachInboxPermission(permissible))
             return false;
 
         player.sendForm(SimpleButtonForm.builder(owner)
@@ -1102,12 +1098,8 @@ public class BedrockMailPanel {
         return true;
     }
 
-    private boolean checkAttachmentWorldAccess() {
-        return !mailer.getMailer().getUndineConfig().getDisableWorldsToOpenAttachBox().contains(mailSender.getWorldName());
-    }
-
     private boolean checkDeniedAttachmentWorldPrompt(String buttonName, Runnable click) {
-        if (mailer.getMailer().getUndineConfig().getDisableWorldsToOpenAttachBox().contains(mailSender.getWorldName())) {
+        if (mailer.isDisabledAttachmentWorld(mailSender)) {
             player.sendForm(SimpleButtonForm.builder(owner)
                     .title("添付ボックス")
                     .content(ChatColor.RED + "このワールドで開くことができません。\n別のワールドに移動してから添付ボックスを開いてください。")
@@ -1115,10 +1107,6 @@ public class BedrockMailPanel {
             return true;
         }
         return false;
-    }
-
-    private boolean checkAttachSendMailPermission(Permissible permissible) {
-        return mailer.getMailer().getUndineConfig().isEnableAttachment() && MailPermission.ATTACH.can(permissible) && MailPermission.ATTACH_SENDMAIL.can(permissible);
     }
 
 }
