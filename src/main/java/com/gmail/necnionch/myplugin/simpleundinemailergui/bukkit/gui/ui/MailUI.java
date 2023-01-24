@@ -77,7 +77,8 @@ public abstract class MailUI {
 
     public PanelItem createMailItem(MailData mail, boolean clickToView) {
         boolean selected = mail.equals(selectedMail);
-        boolean unread = !mail.isRead(sender);
+        boolean inboxMail = mail.isAllMail() || (mail.getToTotal() != null && mail.getToTotal().contains(sender)) || mail.getTo().contains(sender);
+        boolean unread = !mail.isRead(sender) && inboxMail;
         Material material = selected ? Material.FILLED_MAP : (unread ? Material.MAP : Material.PAPER);
         ChatColor color = unread ? ChatColor.GOLD : ChatColor.GRAY;
 
