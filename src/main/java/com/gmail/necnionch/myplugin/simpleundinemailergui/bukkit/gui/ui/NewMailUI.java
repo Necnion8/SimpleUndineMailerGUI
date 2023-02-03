@@ -165,10 +165,14 @@ public class NewMailUI extends MailUI {
         new AnvilGUI.Builder()
                 .plugin(plugin)
                 .title("メッセージを入力")
-                .text(mail.getMessage().get(0))
+                .text(mail.getMessage().isEmpty() ? "" : mail.getMessage().get(0))
                 .itemLeft(new ItemStack(Material.WRITABLE_BOOK))
                 .onComplete((comp) -> {
-                    mail.getMessage().set(0, comp.getText());
+                    if (mail.getMessage().isEmpty()) {
+                        mail.getMessage().add(comp.getText());
+                    } else {
+                        mail.getMessage().set(0, comp.getText());
+                    }
                     return Collections.singletonList(AnvilGUI.ResponseAction.run(this::open));
                 })
                 .open(player);

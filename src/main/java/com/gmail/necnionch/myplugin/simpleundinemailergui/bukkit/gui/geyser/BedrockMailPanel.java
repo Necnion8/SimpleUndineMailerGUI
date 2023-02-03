@@ -257,7 +257,7 @@ public class BedrockMailPanel {
             }
         }
 
-        f.input("見出し文", "", mail.getMessage().get(0));
+        f.input("見出し文", "", mail.getMessage().isEmpty() ? "" : mail.getMessage().get(0));
 
         final boolean setCost;
         if (!mail.getAttachments().isEmpty() && config.isEnableCODMoney() && mail.getCostItem() == null) {
@@ -298,8 +298,13 @@ public class BedrockMailPanel {
             }
 
             String line = r.asInput();
-            if (line != null && !line.isEmpty())
-                mail.getMessage().set(0, line);
+            if (line != null && !line.isEmpty()) {
+                if (mail.getMessage().isEmpty()) {
+                    mail.getMessage().add(line);
+                } else {
+                    mail.getMessage().set(0, line);
+                }
+            }
 
             if (setCost) {
                 String val = Optional.ofNullable(r.asInput()).orElse("");
