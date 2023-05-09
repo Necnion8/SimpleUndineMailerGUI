@@ -77,7 +77,7 @@ public class InfoGUIBridge {
                 if (owner.isBedrockPlayer(player.getUniqueId())) {
                     player.closeInventory();
                     owner.getServer().getScheduler().runTaskLater(owner, () ->
-                            owner.openGUI(player, MainPanel.DEFAULT_UI), 20);
+                            owner.openGUI(player, MainPanel.DEFAULT_UI), 5);
                 } else {
                     owner.openGUI(player, MainPanel.DEFAULT_UI);
                 }
