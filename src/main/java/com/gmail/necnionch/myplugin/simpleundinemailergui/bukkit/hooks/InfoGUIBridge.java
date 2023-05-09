@@ -67,9 +67,7 @@ public class InfoGUIBridge {
             if (count > 0)
                 name += " (+" + count + ")";
             event.getSlots()[29] = PanelItem.createItem(Material.FILLED_MAP, name).setClickListener((e, p) -> {
-                new MainPanel(event.getPlayer(), MainPanel.DEFAULT_UI)
-                        .setFallbackPanel(() -> openGUI(event.getPlayer()))
-                        .open();
+                owner.openGUI(event.getPlayer(), MainPanel.DEFAULT_UI);
             });
         }
     }
