@@ -67,6 +67,10 @@ public final class MailGUIPlugin extends JavaPlugin {
         return null;
     }
 
+    public boolean isBedrockPlayer(UUID playerId) {
+        return enabledFloodgate && FloodgateApi.getInstance().isFloodgatePlayer(playerId);
+    }
+
 
     public void openGUI(Player player, MainPanel.UIType ui) {
         if (enabledFloodgate) {

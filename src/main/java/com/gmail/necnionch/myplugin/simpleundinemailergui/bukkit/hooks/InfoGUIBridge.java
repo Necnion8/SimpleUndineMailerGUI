@@ -63,16 +63,24 @@ public class InfoGUIBridge {
     public final class GUIListener implements Listener {
         @EventHandler
         public void onMainPanel(InfoGUIMailPanelEvent event) {
-            if (MailPermission.READ.cannot(event.getPlayer())) {
+            Player player = event.getPlayer();
+            if (MailPermission.READ.cannot(player)) {
                 return;
             }
 
-            int count = getUnreadMailCount(event.getPlayer());
+            int count = getUnreadMailCount(player);
             String name = ChatColor.AQUA + "メール一覧";
             if (count > 0)
                 name += " (+" + count + ")";
-            event.getSlots()[29] = PanelItem.createItem(Material.FILLED_MAP, name).setClickListener((e, p) -> {
-                owner.openGUI(event.getPlayer(), MainPanel.DEFAULT_UI);
+
+            event.getSlots()[29] = PanelItem.createItem(Material.MAP, name).setClickListener((e, p) -> {
+                if (owner.isBedrockPlayer(player.getUniqueId())) {
+                    player.closeInventory();
+                    owner.getServer().getScheduler().runTaskLater(owner, () ->
+                            owner.openGUI(player, MainPanel.DEFAULT_UI), 20);
+                } else {
+                    owner.openGUI(player, MainPanel.DEFAULT_UI);
+                }
             });
         }
     }
