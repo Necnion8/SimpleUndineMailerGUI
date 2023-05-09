@@ -5,6 +5,7 @@ import com.gmail.necnionch.myplugin.infogui.bukkit.events.InfoGUIMailPanelEvent;
 import com.gmail.necnionch.myplugin.infogui.bukkit.gui.PanelItem;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.MailGUIPlugin;
 import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.gui.MainPanel;
+import com.gmail.necnionch.myplugin.simpleundinemailergui.bukkit.util.MailPermission;
 import org.bitbucket.ucchy.undine.sender.MailSender;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -62,6 +63,10 @@ public class InfoGUIBridge {
     public final class GUIListener implements Listener {
         @EventHandler
         public void onMainPanel(InfoGUIMailPanelEvent event) {
+            if (MailPermission.READ.cannot(event.getPlayer())) {
+                return;
+            }
+
             int count = getUnreadMailCount(event.getPlayer());
             String name = ChatColor.AQUA + "メール一覧";
             if (count > 0)
